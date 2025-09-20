@@ -1,0 +1,15 @@
+###
+GET http://127.0.0.1:3005/api/users/100
+
+###
+POST  http://127.0.0.1:3005/api/users
+Content-Type: application/json
+
+{
+    "user": {
+        "email": "nestle@nestle.com",
+        "password": "Nestle123",
+        "isAdmin": true,
+        "createdAt": "hoy"
+    }
+}
