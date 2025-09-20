@@ -20,5 +20,12 @@ export const UserService = {
         UserRepository.createOne(modelUserToCreate)
         
         return modelUserToCreate
+    },
+
+    serviceUserDelete: (id) => {
+        const idUserToDelete = UserRepository.deleteById(id) 
+        
+        if (!idUserToDelete) return null
+        return idUserToDelete
     }
 }

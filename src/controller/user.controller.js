@@ -43,5 +43,27 @@ export const UserController = {
             })
             return            
         }
-    }
+    },
+
+    userDeleteOne : async (req, res) => {
+        const {id} = req.params
+        const idUser = await UserService.serviceUserDelete(id)
+
+        if (!idUser) {
+            res.status(404).json({
+                payload: null,
+                message: "No se pudo borrar el usuario",
+                ok: false
+            })
+            return
+        }
+
+        res.status(200).json({
+            message: `Success: ${idUser}`,
+            payload: { idUser },
+            ok: true
+        })
+        return
+    }, 
+
 }

@@ -24,5 +24,23 @@ export const UserRepository = {
         } catch (e) {
             console.error({message: e.message});            
         }
+    },
+
+    deleteById: async (id) => {
+        const users = await JsonHandler.read()
+        if (!users) return null
+
+        const userToDelete = users.find(user => user.id == id)
+
+        if(!userToDelete) return null
+
+        const everyOtherUsers = users.filter(eachUser => eachUser.id != id)
+        
+        try {
+            await JsonHandler.write(everyOtherUsers)
+            return userToDelete
+        } catch (e) {
+            return null
+        }
     }
 }
