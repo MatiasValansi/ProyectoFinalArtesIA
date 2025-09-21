@@ -3,6 +3,7 @@ import { config } from "./config/config.js"
 import { statusRouter } from "./routes/statusRouter.js"
 import { userRouter } from "./routes/userRouter.js"
 import { caseRouter } from "./routes/caseRouter.js"
+import { SupabaseUserRepository } from "./repository/user.supabase.repository.js"
 
 const app = express()
 
@@ -12,13 +13,17 @@ app.use(statusRouter)
 app.use("/api",userRouter)
 app.use("/api",caseRouter)
 
-app.get("/",
-    (req,res)=> {
-        res.json({
-            url: config.SUPABASE_URL
-        })
-    }
+app.get("/", async (req,res)=> {
+    const {data} = await SupabaseUserRepository.getAll()
+    res.json({data})
+}
 )
+
+app.post("/crear-user", async (req,res) => {
+    const user = req.body
+    const {data,error} = await SupabaseUserRepository.userCreateOne(user)
+    return res.json({data,error})
+})
 
 app.listen(
     config.PORT,

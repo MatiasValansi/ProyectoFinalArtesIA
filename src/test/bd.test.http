@@ -1,0 +1,19 @@
+### Listar todos los usuarios de tu tabla "users"
+GET https://nsqgsfqlfvnzbuixxvno.supabase.co/rest/v1/users
+apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zcWdzZnFsZnZuemJ1aXh4dm5vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODM4NzA1MSwiZXhwIjoyMDczOTYzMDUxfQ.okbwovdFAyJvBIH3fi-exOc7qwjWpzP1dekKlIPu9q0
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zcWdzZnFsZnZuemJ1aXh4dm5vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODM4NzA1MSwiZXhwIjoyMDczOTYzMDUxfQ.okbwovdFAyJvBIH3fi-exOc7qwjWpzP1dekKlIPu9q0
+
+### Crear un nuevo usuario (REST Client)
+POST https://nsqgsfqlfvnzbuixxvno.supabase.co/rest/v1/users
+apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zcWdzZnFsZnZuemJ1aXh4dm5vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODM4NzA1MSwiZXhwIjoyMDczOTYzMDUxfQ.okbwovdFAyJvBIH3fi-exOc7qwjWpzP1dekKlIPu9q0
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zcWdzZnFsZnZuemJ1aXh4dm5vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODM4NzA1MSwiZXhwIjoyMDczOTYzMDUxfQ.okbwovdFAyJvBIH3fi-exOc7qwjWpzP1dekKlIPu9q0
+Content-Type: application/json
+Prefer: return=representation
+Accept: application/json
+
+{
+  "name": "Juan Perez",
+  "email": "juanperez@example.com",
+  "password": "123456",
+  "admin": false
+}
