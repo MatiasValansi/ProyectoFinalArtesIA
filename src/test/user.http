@@ -16,3 +16,6 @@ Content-Type: application/json
 
 ###
 DELETE http://127.0.0.1:3005/api/users/a9ea1dcd-4355-4459-9564-3766780cfe13
+
+###
+GET http://127.0.0.1:3005/api/users

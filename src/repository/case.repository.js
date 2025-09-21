@@ -13,5 +13,16 @@ export const CaseRepository = {
         if (!caseFound) return null
 
         return caseFound
+    },
+
+    createOne: async (caseToCreate) => {
+        const cases = await JsonHandler.read()
+        cases.push(caseToCreate)
+
+        try {
+            await JsonHandler.write(cases)
+        } catch (e) {
+            console.error({message: e.message});            
+        }
     }
 }

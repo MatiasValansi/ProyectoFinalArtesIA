@@ -1,6 +1,26 @@
 import { UserService } from "../service/user.service.js";
 
 export const UserController = {
+
+    userAll: async (req, res) =>{
+        const allUsers = await UserService.serviceUserAll()
+
+        if(!allUsers){
+            res.status(404).json({
+                payload: null,
+                message: "No hay usuarios",
+                ok:false,
+            })
+            return null
+        } else {
+            res.status(200).json({
+                message:"Success 🟢🟢🟢",
+                payload: allUsers,
+                ok:true
+            })
+        }
+    },
+
     userValidation : async (req,res) => {
         const {id} = req.params;
         const userById = await UserService.serviceUserValidation(id)
@@ -64,6 +84,10 @@ export const UserController = {
             ok: true
         })
         return
-    }, 
+    },
+
+    userUpdateOne : async (req,res) => {
+        
+    }
 
 }
