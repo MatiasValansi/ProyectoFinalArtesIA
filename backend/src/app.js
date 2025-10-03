@@ -25,6 +25,12 @@ app.post("/crear-user", async (req,res) => {
     return res.json({data,error})
 })
 
+app.delete("/:id", async (req, res) => {
+    const { id } = req.params;
+    const {data, error} = await SupabaseUserRepository.userDeleteOneById(id)
+    return res.json({data, error})
+})
+
 app.listen(
     config.PORT,
     () => {
