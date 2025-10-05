@@ -1,10 +1,11 @@
 import { User } from "../model/user.js";
 import { UserRepository } from "../repository/user.repository.js";
+import { SupabaseUserRepository } from "../repository/user.supabase.repository.js";
 
 export const UserService = {
 
     serviceUserAll: async () => {
-        const users = await UserRepository.getAll()
+        const users = await SupabaseUserRepository.getAll()
         if (!users) return null
 
         return users

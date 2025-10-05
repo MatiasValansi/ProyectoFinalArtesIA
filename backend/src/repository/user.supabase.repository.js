@@ -1,3 +1,5 @@
+import {supabase} from "../db/supabase.js"
+
 export const SupabaseUserRepository = {
     getAll: async () => {
         let { data: users} = await supabase

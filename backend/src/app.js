@@ -13,11 +13,6 @@ app.use(statusRouter)
 app.use("/api",userRouter)
 app.use("/api",caseRouter)
 
-app.get("/", async (req,res)=> {
-    const {data} = await SupabaseUserRepository.getAll()
-    res.json({data})
-}
-)
 
 app.post("/crear-user", async (req,res) => {
     const user = req.body

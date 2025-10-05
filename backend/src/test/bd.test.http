@@ -19,5 +19,5 @@ Accept: application/json
 }
 
 ###
-DELETE https://nsqgsfqlfvnzbuixxvno.supabase.co/rest/v1/users?id=eq.7591c4af-c680-44b4-9091-267c27e102e4
+DELETE https://nsqgsfqlfvnzbuixxvno.supabase.co/rest/v1/users?id=eq.8713f843-b793-4052-9429-3b518d9b1844
 apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zcWdzZnFsZnZuemJ1aXh4dm5vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODM4NzA1MSwiZXhwIjoyMDczOTYzMDUxfQ.okbwovdFAyJvBIH3fi-exOc7qwjWpzP1dekKlIPu9q0
