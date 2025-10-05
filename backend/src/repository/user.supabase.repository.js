@@ -20,6 +20,7 @@ export const SupabaseUserRepository = {
             },
           ])
       .select()
+         
 
       if (error) {
           throw error

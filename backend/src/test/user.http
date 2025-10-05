@@ -7,10 +7,10 @@ Content-Type: application/json
 
 {
     "user": {
+        "name": "Matías",
         "email": "nestle@nestle.com",
         "password": "Nestle123",
-        "isAdmin": true,
-        "createdAt": "hoy"
+        "admin": false
     }
 }
 

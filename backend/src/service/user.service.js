@@ -19,16 +19,11 @@ export const UserService = {
     },
 
     serviceUserCreation: async (userToCreate) => {
-        const userData = {
-            ...userToCreate,
-            id: crypto.randomUUID().toString()
-        }
-
-        const modelUserToCreate = new User(userData.id, userData.email,userData.password,userData.isAdmin,userData.createdAt)
-
-        await UserRepository.createOne(modelUserToCreate)
+        const userCreated = await SupabaseUserRepository.userCreateOne(userToCreate)
         
-        return modelUserToCreate
+        if (!userCreated) return null
+        
+        return userCreated
     },
 
     serviceUserDelete: (id) => {

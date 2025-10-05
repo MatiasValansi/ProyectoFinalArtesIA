@@ -45,20 +45,19 @@ export const UserController = {
         const {user} = req.body
 
         try{
-            const userCreated = UserService.serviceUserCreation(user)
+            const userCreated = await UserService.serviceUserCreation(user)            
             res.status(200).json({
-                message: "Success 🟢🟢🟢",
-                payload : {...userCreated},
-                spayload: {userCreated},
+                message: "🟢 Success 🟢 --> Usuario creado con exito",
+                payload: {userCreated},
                 ok: true
             })
             return            
         }
         catch(e){
-            console.log({error: e.message, msg: "Algo salió mal...!"});
             res.status(404).json({
                 payload: null,
                 message: "No se pudo crear el usuario",
+                error: e.message,
                 ok: false
             })
             return            

@@ -14,11 +14,6 @@ app.use("/api",userRouter)
 app.use("/api",caseRouter)
 
 
-app.post("/crear-user", async (req,res) => {
-    const user = req.body
-    const {data,error} = await SupabaseUserRepository.userCreateOne(user)
-    return res.json({data,error})
-})
 
 app.delete("/:id", async (req, res) => {
     const { id } = req.params;
