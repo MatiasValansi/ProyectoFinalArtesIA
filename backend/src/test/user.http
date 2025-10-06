@@ -10,12 +10,12 @@ Content-Type: application/json
         "name": "Matías",
         "email": "nestle@nestle.com",
         "password": "Nestle123",
-        "admin": false
+        "role": "Admin"
     }
 }
 
 ###
-DELETE http://127.0.0.1:3005/api/users/b41d5318-abf3-4517-89a8-5718f6646d29
+DELETE http://127.0.0.1:3005/api/users/4d95395c-7267-4124-811f-ddb1253877ab
 
 ###
 GET http://127.0.0.1:3005/api/users

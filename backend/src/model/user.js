@@ -1,9 +1,9 @@
 export class User {
-	constructor(id, email, password, isAdmin, createdAt) {
+	constructor(id, email, password, role, createdAt) {
         this.id = id
         this.email = email
         this.password = password
-        this.isAdmin = isAdmin
+        this.role = role
         this.createdAt = createdAt
     }
 }
