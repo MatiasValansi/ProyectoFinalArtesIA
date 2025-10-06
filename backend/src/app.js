@@ -13,14 +13,6 @@ app.use(statusRouter)
 app.use("/api",userRouter)
 app.use("/api",caseRouter)
 
-
-
-app.delete("/:id", async (req, res) => {
-    const { id } = req.params;
-    const {data, error} = await SupabaseUserRepository.userDeleteOneById(id)
-    return res.json({data, error})
-})
-
 app.listen(
     config.PORT,
     () => {
