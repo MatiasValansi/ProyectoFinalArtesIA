@@ -1,3 +1,4 @@
+import { USER_ROLES } from "../config/roles.js"
 import {supabase} from "../db/supabase.js"
 
 export const SupabaseUserRepository = {
@@ -16,7 +17,7 @@ export const SupabaseUserRepository = {
               name: user.name,
               email: user.email,
               password: user.password, // cambia por hashedPassword si usás bcrypt
-              admin: user.admin ?? false,
+              role: user.role ?? USER_ROLES.USER,
             },
           ])
       .select()

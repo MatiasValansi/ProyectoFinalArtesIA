@@ -26,10 +26,10 @@ export const UserService = {
         return userCreated
     },
 
-    serviceUserDelete: (id) => {
-        const idUserToDelete = UserRepository.deleteById(id) 
+    serviceUserDelete: async (idToDelete) => {
+        const userDeleted = await SupabaseUserRepository.userDeleteOneById(idToDelete) 
         
-        if (!idUserToDelete) return null
-        return idUserToDelete
+        if (!userDeleted) return null
+        return userDeleted
     }
 }

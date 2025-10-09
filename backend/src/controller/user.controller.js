@@ -78,8 +78,8 @@ export const UserController = {
         }
 
         res.status(200).json({
-            message: `Success: ${idUser}`,
-            payload: { idUser },
+            message: `Success: ${idUser.data}`,
+            payload: idUser,
             ok: true
         })
         return
