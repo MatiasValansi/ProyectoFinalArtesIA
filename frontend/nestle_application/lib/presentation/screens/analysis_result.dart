@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class AnalysisResult extends StatefulWidget {
   final String projectName;
@@ -17,11 +19,108 @@ class _AnalysisResultState extends State<AnalysisResult> {
   bool isCollapsed = false;
   bool _isLoading = true;
   Map<String, dynamic>? _analysisData;
+  final TextEditingController _chatController = TextEditingController();
+  final ScrollController _chatScrollController = ScrollController();
+  List<Map<String, dynamic>> _chatMessages = [];
+  String? _chatInstanceId;
+  bool _isChatInitializing = false;
+  bool _isChatSending = false;
 
   @override
   void initState() {
     super.initState();
     _loadAnalysisResults();
+    _initializeChatMessages();
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    _chatScrollController.dispose();
+    super.dispose();
+  }
+
+  void _initializeChatMessages() {
+    _chatMessages = [
+      {
+        'isUser': false,
+        'message': 'Inicializando asistente de Nestlé...',
+        'timestamp': DateTime.now().subtract(const Duration(minutes: 1)),
+        'isLoading': true,
+      },
+    ];
+    _initializeChatAgent();
+  }
+
+  Future<void> _initializeChatAgent() async {
+    setState(() {
+      _isChatInitializing = true;
+    });
+
+    try {
+      final requestBody = [
+        {
+          'key': 'message',
+          'value': '',
+        }
+      ];
+      
+      print('Iniciando chat con cuerpo: ${jsonEncode(requestBody)}');
+      
+      final response = await http.post(
+        Uri.parse('https://api.serenitystar.ai/api/v2/agent/NestleCheckAsistente/execute'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': '10472b86-76cf-41d4-a27e-7fe76745d7db',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      print('Respuesta del servidor - Status: ${response.statusCode}');
+      print('Respuesta del servidor - Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _chatInstanceId = data['instanceId'];
+        
+        print('Instance ID obtenido: $_chatInstanceId');
+        
+        setState(() {
+          // Remover mensaje de carga y agregar mensaje de bienvenida
+          _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
+          _chatMessages.add({
+            'isUser': false,
+            'message': data['content'] ?? '¡Hola! Soy tu asistente de análisis de Nestlé. ¿En qué puedo ayudarte con los resultados del análisis?',
+            'timestamp': DateTime.now(),
+            'isLoading': false,
+          });
+          _isChatInitializing = false;
+        });
+      } else {
+        print('Error HTTP ${response.statusCode}: ${response.body}');
+        
+        // Si es error 400, intentar con mensaje aún más simple
+        if (response.statusCode == 400) {
+          print('Reintentando con mensaje simple...');
+          await _retryInitialization();
+          return;
+        }
+        
+        throw Exception('Error al inicializar el chat: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
+        _chatMessages.add({
+          'isUser': false,
+          'message': 'No se pudo conectar con el asistente. Funcionando en modo offline.',
+          'timestamp': DateTime.now(),
+          'isLoading': false,
+        });
+        _isChatInitializing = false;
+      });
+      print('Error inicializando chat: $e');
+    }
   }
 
   Future<void> _loadAnalysisResults() async {
@@ -275,13 +374,36 @@ class _AnalysisResultState extends State<AnalysisResult> {
           
           const SizedBox(height: 32),
           
-          // Problemas encontrados
-          _buildIssuesSection(),
-          
-          const SizedBox(height: 32),
-          
-          // Recomendaciones
-          _buildRecommendationsSection(),
+          // Layout de 3 columnas: Problemas, Recomendaciones y Chat
+          SizedBox(
+            height: 600, // Altura fija para evitar problemas de layout
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Columna 1: Problemas encontrados
+                Expanded(
+                  flex: 1,
+                  child: _buildIssuesSection(),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Columna 2: Recomendaciones
+                Expanded(
+                  flex: 1,
+                  child: _buildRecommendationsSection(),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Columna 3: Chat con IA
+                Expanded(
+                  flex: 1,
+                  child: _buildChatSection(),
+                ),
+              ],
+            ),
+          ),
           
           const SizedBox(height: 32),
           
@@ -381,6 +503,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
 
   Widget _buildIssuesSection() {
     return Container(
+      height: 600,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -405,7 +528,13 @@ class _AnalysisResultState extends State<AnalysisResult> {
             ),
           ),
           const SizedBox(height: 16),
-          ...(_analysisData!['issues'] as List).map((issue) => _buildIssueItem(issue)),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: (_analysisData!['issues'] as List).map((issue) => _buildIssueItem(issue)).toList(),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -500,6 +629,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
 
   Widget _buildRecommendationsSection() {
     return Container(
+      height: 600,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -524,29 +654,35 @@ class _AnalysisResultState extends State<AnalysisResult> {
             ),
           ),
           const SizedBox(height: 16),
-          ...(_analysisData!['recommendations'] as List).asMap().entries.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF004B93),
-                      shape: BoxShape.circle,
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: (_analysisData!['recommendations'] as List).asMap().entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF004B93),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            entry.value,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      entry.value,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ),
-                ],
+                ).toList(),
               ),
             ),
           ),
@@ -586,5 +722,495 @@ class _AnalysisResultState extends State<AnalysisResult> {
         ),
       ],
     );
+  }
+
+  Widget _buildChatSection() {
+    return Container(
+      height: 600, // Altura fija para el chat
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header del chat
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFF004B93),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.smart_toy,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Asistente IA de Análisis',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _isChatInitializing 
+                        ? Colors.orange 
+                        : (_chatInstanceId != null ? Colors.green : Colors.red),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _isChatInitializing 
+                      ? 'Conectando...' 
+                      : (_chatInstanceId != null ? 'En línea' : 'Offline'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Área de mensajes
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              child: ListView.builder(
+                controller: _chatScrollController,
+                itemCount: _chatMessages.length,
+                itemBuilder: (context, index) {
+                  final message = _chatMessages[index];
+                  return _buildChatMessage(message);
+                },
+              ),
+            ),
+          ),
+          
+          // Input del chat
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: Colors.grey.shade200),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _chatController,
+                    enabled: !_isChatSending,
+                    textInputAction: TextInputAction.send,
+                    decoration: InputDecoration(
+                      hintText: 'Pregunta sobre el análisis...',
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: const BorderSide(color: Color(0xFF004B93)),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: _isChatSending
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF004B93),
+                                  ),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.send,
+                                color: Color(0xFF004B93),
+                              ),
+                        onPressed: _isChatSending ? null : _sendMessage,
+                      ),
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatMessage(Map<String, dynamic> message) {
+    final isUser = message['isUser'] as bool;
+    final messageText = message['message'] as String;
+    final timestamp = message['timestamp'] as DateTime;
+    final isLoading = message['isLoading'] as bool? ?? false;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (!isUser) ...[
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: Color(0xFF004B93),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.smart_toy,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Column(
+              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 250),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isUser ? const Color(0xFF004B93) : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: isLoading
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.grey[600]!,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              messageText,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          messageText,
+                          style: TextStyle(
+                            color: isUser ? Colors.white : Colors.black87,
+                            fontSize: 14,
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatTimestamp(timestamp),
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isUser) ...[
+            const SizedBox(width: 8),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.person,
+                color: Colors.grey,
+                size: 18,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inMinutes < 1) {
+      return 'Ahora';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h';
+    } else {
+      return '${difference.inDays}d';
+    }
+  }
+
+  void _sendMessage() {
+    final messageText = _chatController.text.trim();
+    if (messageText.isEmpty || _isChatSending) return;
+
+    // Si no hay instancia de chat, usar respuesta de fallback
+    if (_chatInstanceId == null) {
+      _sendOfflineMessage(messageText);
+      return;
+    }
+
+    setState(() {
+      _isChatSending = true;
+      
+      // Agregar mensaje del usuario
+      _chatMessages.add({
+        'isUser': true,
+        'message': messageText,
+        'timestamp': DateTime.now(),
+      });
+      
+      // Agregar indicador de carga para la respuesta de IA
+      _chatMessages.add({
+        'isUser': false,
+        'message': 'Escribiendo...',
+        'timestamp': DateTime.now(),
+        'isLoading': true,
+      });
+    });
+
+    _chatController.clear();
+    _scrollToBottom();
+    
+    _sendMessageToAgent(messageText);
+  }
+
+  Future<void> _sendMessageToAgent(String message) async {
+    try {
+      final requestBody = [
+        {
+          'key': 'chatId',
+          'value': _chatInstanceId!,
+        },
+        {
+          'key': 'message',
+          'value': message,
+        }
+      ];
+      
+      print('Enviando mensaje con cuerpo: ${jsonEncode(requestBody)}');
+      
+      final response = await http.post(
+        Uri.parse('https://api.serenitystar.ai/api/v2/agent/NestleJuradoAsistente/execute'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': '10472b86-76cf-41d4-a27e-7fe76745d7db',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      print('Respuesta mensaje - Status: ${response.statusCode}');
+      print('Respuesta mensaje - Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        setState(() {
+          // Remover mensaje de carga
+          _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
+          
+          // Agregar respuesta de la IA
+          _chatMessages.add({
+            'isUser': false,
+            'message': data['content'] ?? 'Lo siento, no pude procesar tu mensaje.',
+            'timestamp': DateTime.now(),
+            'isLoading': false,
+          });
+          
+          _isChatSending = false;
+        });
+      } else {
+        print('Error HTTP mensaje ${response.statusCode}: ${response.body}');
+        throw Exception('Error del servidor: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        // Remover mensaje de carga y mostrar error
+        _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
+        _chatMessages.add({
+          'isUser': false,
+          'message': 'Error al enviar mensaje. Usando respuesta offline.',
+          'timestamp': DateTime.now(),
+          'isLoading': false,
+        });
+        _isChatSending = false;
+      });
+      
+      // Agregar respuesta de fallback
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() {
+            _chatMessages.add({
+              'isUser': false,
+              'message': _generatePlaceholderResponse(message),
+              'timestamp': DateTime.now(),
+            });
+          });
+        }
+      });
+      
+      print('Error enviando mensaje: $e');
+    }
+    
+    _scrollToBottom();
+  }
+
+  Future<void> _retryInitialization() async {
+    try {
+      // Reintentar con un mensaje aún más simple
+      final simpleRequestBody = [
+        {
+          'key': 'message',
+          'value': 'Hola',
+        }
+      ];
+      
+      print('Reintento con cuerpo simple: ${jsonEncode(simpleRequestBody)}');
+      
+      final response = await http.post(
+        Uri.parse('https://api.serenitystar.ai/api/v2/agent/NestleCheckAsistente/execute'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': '10472b86-76cf-41d4-a27e-7fe76745d7db',
+        },
+        body: jsonEncode(simpleRequestBody),
+      );
+
+      print('Reintento - Status: ${response.statusCode}');
+      print('Reintento - Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _chatInstanceId = data['instanceId'];
+        
+        print('Instance ID obtenido en reintento: $_chatInstanceId');
+        
+        setState(() {
+          _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
+          _chatMessages.add({
+            'isUser': false,
+            'message': data['content'] ?? '¡Hola! Soy tu asistente de análisis de Nestlé. ¿En qué puedo ayudarte con los resultados del análisis?',
+            'timestamp': DateTime.now(),
+            'isLoading': false,
+          });
+          _isChatInitializing = false;
+        });
+      } else {
+        throw Exception('Error en reintento: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error en reintento: $e');
+      // Si falla el reintento, usar modo offline
+      setState(() {
+        _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
+        _chatMessages.add({
+          'isUser': false,
+          'message': 'No se pudo conectar con el asistente. Funcionando en modo offline.',
+          'timestamp': DateTime.now(),
+          'isLoading': false,
+        });
+        _isChatInitializing = false;
+      });
+    }
+  }
+
+  void _sendOfflineMessage(String messageText) {
+    setState(() {
+      // Agregar mensaje del usuario
+      _chatMessages.add({
+        'isUser': true,
+        'message': messageText,
+        'timestamp': DateTime.now(),
+      });
+    });
+
+    _chatController.clear();
+    _scrollToBottom();
+
+    // Simular respuesta offline
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted) {
+        setState(() {
+          _chatMessages.add({
+            'isUser': false,
+            'message': _generatePlaceholderResponse(messageText),
+            'timestamp': DateTime.now(),
+          });
+        });
+        _scrollToBottom();
+      }
+    });
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_chatScrollController.hasClients) {
+        _chatScrollController.animateTo(
+          _chatScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  String _generatePlaceholderResponse(String userMessage) {
+    final responses = [
+      'Gracias por tu pregunta. Basándome en el análisis del proyecto "${widget.projectName}", puedo ayudarte con más detalles específicos.',
+      'He analizado tu consulta. Los resultados muestran un ${_analysisData?['complianceScore']}% de cumplimiento. ¿Te gustaría que profundice en algún aspecto específico?',
+      'Según los datos del análisis, hay ${_analysisData?['invalidImages']} problemas identificados. ¿Quieres que te explique cómo resolverlos?',
+      'Perfecto. Para el proyecto "${widget.projectName}", las principales recomendaciones están relacionadas con la posición del logo y la calibración de colores.',
+      'Entiendo tu consulta. El análisis indica que ${_analysisData?['validImages']} de ${_analysisData?['totalImages']} imágenes cumplen con los estándares. ¿Necesitas más información sobre los problemas encontrados?',
+    ];
+    
+    return responses[DateTime.now().millisecond % responses.length];
   }
 }
