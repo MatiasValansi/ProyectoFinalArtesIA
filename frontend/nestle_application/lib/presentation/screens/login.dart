@@ -47,10 +47,10 @@ class _LoginState extends State<Login> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Logo Nestlé
-            Image.network(
-              "https://1000marcas.net/wp-content/uploads/2020/01/Nestle-Log%D0%BE-500x281.png",
-              height: 80,
-            ),
+              Image.asset(
+                "assets/images/NestléLogo.svg.png",
+                height: 120,
+              ),
             const SizedBox(height: 30),
 
             const Text(
@@ -111,7 +111,7 @@ class _LoginState extends State<Login> {
                 },
                 child: const Text(
                   'Ingresar',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
             ),

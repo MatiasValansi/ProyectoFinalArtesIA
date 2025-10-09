@@ -6,7 +6,7 @@ class Home extends StatefulWidget  {
   
   final  String recivedText;
 
-  Home({super.key, required this.recivedText});
+  Home({super.key, this.recivedText = 'Usuario'});
   //Home({super.key, required this.recivedText});
 
 
@@ -24,14 +24,6 @@ class _HomeState extends State<Home> {
     return Scaffold(
       backgroundColor: Colors.grey[200],
 
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF004B93), // Azul Nestlé
-        title: const Text(
-          'Nestle App',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
       body: Row(
         children: [
           // Sidebar
@@ -88,26 +80,25 @@ class _HomeState extends State<Home> {
 
                 const Spacer(),
 
-                // Botón logout
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004B93),
-                      minimumSize: Size(double.infinity, 40),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                // Botón logout solo si el sidebar está expandido
+                if (!isCollapsed)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF004B93),
+                        minimumSize: Size(double.infinity, 40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
+                      onPressed: () {
+                        context.go('/login', extra: 'From Home Screen');
+                      },
+                      icon: const Icon(Icons.logout, size: 20.0),
+                      label: const Text("Cerrar sesión", style: TextStyle(color: Colors.white)),
                     ),
-                    onPressed: () {
-                      context.go('/login', extra: 'From Home Screen');
-                    },
-                    icon: const Icon(Icons.logout, size: 6.0),
-                    label: isCollapsed
-                        ? const SizedBox.shrink()
-                        : const Text("Cerrar sesión"),
                   ),
-                ),
               ],
             ),
           ),
@@ -139,9 +130,30 @@ class _HomeState extends State<Home> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Proyectos Activos",
-                            style: TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.bold)),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Proyectos Activos",
+                                style: TextStyle(
+                                    fontSize: 22, fontWeight: FontWeight.bold)),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                context.go('/new-art');
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF004B93),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text("Agregar Proyecto"),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 16),
 
                         Expanded(
@@ -205,7 +217,9 @@ class _HomeState extends State<Home> {
           ],
         ),
         trailing: TextButton(
-          onPressed: () {},
+          onPressed: () {
+            context.go('/analysis/${Uri.encodeComponent(nombre)}');
+          },
           child: const Text("Ver detalles"),
         ),
       ),
