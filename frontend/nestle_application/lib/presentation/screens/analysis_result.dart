@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:html' as html;
 
 class AnalysisResult extends StatefulWidget {
   final String projectName;
@@ -25,6 +26,8 @@ class _AnalysisResultState extends State<AnalysisResult> {
   String? _chatInstanceId;
   bool _isChatInitializing = false;
   bool _isChatSending = false;
+  html.File? _selectedImage;
+  String? _selectedImageBase64;
 
   @override
   void initState() {
@@ -816,10 +819,66 @@ class _AnalysisResultState extends State<AnalysisResult> {
                 top: BorderSide(color: Colors.grey.shade200),
               ),
             ),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: TextField(
+                // Vista previa de imagen seleccionada
+                if (_selectedImage != null) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.image,
+                          color: Colors.grey[600],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _selectedImage!.name,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[700],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: _removeSelectedImage,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                // Input row
+                Row(
+                  children: [
+                    // Botón para adjuntar imagen
+                    IconButton(
+                      icon: Icon(
+                        Icons.attach_file,
+                        color: _selectedImage != null 
+                            ? const Color(0xFF004B93) 
+                            : Colors.grey[600],
+                      ),
+                      onPressed: _selectImage,
+                      tooltip: 'Adjuntar imagen',
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
                     controller: _chatController,
                     enabled: !_isChatSending,
                     textInputAction: TextInputAction.send,
@@ -861,6 +920,8 @@ class _AnalysisResultState extends State<AnalysisResult> {
                     maxLines: 1,
                   ),
                 ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -874,6 +935,8 @@ class _AnalysisResultState extends State<AnalysisResult> {
     final messageText = message['message'] as String;
     final timestamp = message['timestamp'] as DateTime;
     final isLoading = message['isLoading'] as bool? ?? false;
+    final hasImage = message['hasImage'] as bool? ?? false;
+    final imageName = message['imageName'] as String?;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -933,12 +996,47 @@ class _AnalysisResultState extends State<AnalysisResult> {
                             ),
                           ],
                         )
-                      : Text(
-                          messageText,
-                          style: TextStyle(
-                            color: isUser ? Colors.white : Colors.black87,
-                            fontSize: 14,
-                          ),
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (hasImage && imageName != null) ...[
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isUser 
+                                      ? Colors.white.withOpacity(0.2) 
+                                      : Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.image,
+                                      size: 16,
+                                      color: isUser ? Colors.white : Colors.grey[600],
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      imageName,
+                                      style: TextStyle(
+                                        color: isUser ? Colors.white : Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            Text(
+                              messageText,
+                              style: TextStyle(
+                                color: isUser ? Colors.white : Colors.black87,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
                         ),
                 ),
                 const SizedBox(height: 4),
@@ -971,6 +1069,41 @@ class _AnalysisResultState extends State<AnalysisResult> {
         ],
       ),
     );
+  }
+
+  void _selectImage() {
+    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+    uploadInput.accept = '.jpg,.jpeg,.png,.gif,.webp';
+    
+    uploadInput.onChange.listen((e) {
+      final files = uploadInput.files;
+      if (files != null && files.isNotEmpty) {
+        _selectedImage = files[0];
+        _convertImageToBase64();
+      }
+    });
+    
+    uploadInput.click();
+  }
+
+  void _convertImageToBase64() {
+    if (_selectedImage == null) return;
+    
+    final reader = html.FileReader();
+    reader.onLoadEnd.listen((e) {
+      final result = reader.result as String;
+      setState(() {
+        _selectedImageBase64 = result.split(',')[1]; // Remover el prefijo data:image/...;base64,
+      });
+    });
+    reader.readAsDataUrl(_selectedImage!);
+  }
+
+  void _removeSelectedImage() {
+    setState(() {
+      _selectedImage = null;
+      _selectedImageBase64 = null;
+    });
   }
 
   String _formatTimestamp(DateTime timestamp) {
@@ -1006,6 +1139,8 @@ class _AnalysisResultState extends State<AnalysisResult> {
         'isUser': true,
         'message': messageText,
         'timestamp': DateTime.now(),
+        'hasImage': _selectedImageBase64 != null,
+        'imageName': _selectedImage?.name,
       });
       
       // Agregar indicador de carga para la respuesta de IA
@@ -1021,6 +1156,11 @@ class _AnalysisResultState extends State<AnalysisResult> {
     _scrollToBottom();
     
     _sendMessageToAgent(messageText);
+    
+    // Limpiar imagen después de enviar
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _removeSelectedImage();
+    });
   }
 
   Future<void> _sendMessageToAgent(String message) async {
@@ -1033,7 +1173,13 @@ class _AnalysisResultState extends State<AnalysisResult> {
         {
           'key': 'message',
           'value': message,
-        }
+        },
+        if (_selectedImageBase64 != null) ...[
+          {
+            'key': 'image',
+            'value': _selectedImageBase64!,
+          }
+        ]
       ];
       
       print('Enviando mensaje con cuerpo: ${jsonEncode(requestBody)}');
