@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:html' as html;
 
+
 class AnalysisResult extends StatefulWidget {
   final String projectName;
 
@@ -42,6 +43,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
     _chatScrollController.dispose();
     super.dispose();
   }
+
 
   void _initializeChatMessages() {
     _chatMessages = [
@@ -694,16 +696,41 @@ class _AnalysisResultState extends State<AnalysisResult> {
     );
   }
 
+  void _exportReport() {
+    if (_analysisData == null) return;
+
+    // Construir CSV
+    final buffer = StringBuffer();
+    buffer.writeln('Proyecto,Fecha,Imágenes Totales,Imágenes Válidas,Problemas,Puntaje');
+    buffer.writeln('${_analysisData!['projectName']},${_analysisData!['analysisDate']},${_analysisData!['totalImages']},${_analysisData!['validImages']},${_analysisData!['invalidImages']},${_analysisData!['complianceScore']}%');
+    buffer.writeln();
+    buffer.writeln('Tipo de Problema,Severidad,Cantidad,Descripción');
+    for (final issue in _analysisData!['issues']) {
+      buffer.writeln('${issue['type']},${issue['severity']},${issue['count']},${issue['description']}');
+    }
+    buffer.writeln();
+    buffer.writeln('Recomendaciones');
+    for (final rec in _analysisData!['recommendations']) {
+      buffer.writeln(rec);
+    }
+
+    final bytes = utf8.encode(buffer.toString());
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..setAttribute('download', 'reporte_${_analysisData!['projectName']}.csv')
+      ..click();
+    html.Url.revokeObjectUrl(url);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reporte exportado exitosamente')),
+    );
+  }
+
   Widget _buildActionButtons() {
     return Row(
       children: [
         ElevatedButton.icon(
-          onPressed: () {
-            // Implementar exportar reporte
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Funcionalidad de exportar en desarrollo')),
-            );
-          },
+          onPressed: _exportReport,
           icon: const Icon(Icons.download),
           label: const Text('Exportar Reporte'),
           style: ElevatedButton.styleFrom(
