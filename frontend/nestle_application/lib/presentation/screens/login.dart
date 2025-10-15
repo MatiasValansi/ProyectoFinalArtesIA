@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:nestle_application/domain/movie.dart';
 
 class Login extends StatefulWidget {
   Login({super.key});
@@ -12,14 +11,6 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> {
   final TextEditingController _usernameController = TextEditingController();
   String inputText = '';
-
-  List<Movie> movies = [
-    Movie(title: 'Inception', director: 'Christopher Nolan', year: 2010, gener: 'Sci-Fi'),
-    Movie(title: 'The Godfather', director: 'Francis Ford Coppola', year: 1972, gener: 'Crime'),
-    Movie(title: 'Pulp Fiction', director: 'Quentin Tarantino', year: 1994, gener: 'Crime'),
-    Movie(title: 'The Dark Knight', director: 'Christopher Nolan', year: 2008, gener: 'Action'),
-    Movie(title: 'Forrest Gump', director: 'Robert Zemeckis', year: 1994, gener: 'Drama'),
-  ];
 
   @override
   void initState() {
