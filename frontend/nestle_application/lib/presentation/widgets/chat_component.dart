@@ -27,6 +27,8 @@ class _ChatComponentState extends State<ChatComponent> {
   bool _isInitializing = true;
   html.File? _selectedImage;
   String? _selectedImageBase64;
+  String? _volatileKnowledgeId;
+  bool _isUploadingFile = false;
 
   @override
   void initState() {
@@ -190,31 +192,73 @@ class _ChatComponentState extends State<ChatComponent> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.image,
-                          color: Colors.grey[600],
-                          size: 20,
-                        ),
+                        if (_isUploadingFile)
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF004B93),
+                              ),
+                            ),
+                          )
+                        else if (_volatileKnowledgeId != null)
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 20,
+                          )
+                        else
+                          Icon(
+                            Icons.attach_file,
+                            color: Colors.grey[600],
+                            size: 20,
+                          ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            _selectedImage!.name,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _selectedImage!.name,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (_isUploadingFile)
+                                Text(
+                                  'Subiendo archivo...',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                )
+                              else if (_volatileKnowledgeId != null)
+                                Text(
+                                  'Archivo listo para analizar',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.green[600],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (!_isUploadingFile)
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: _removeSelectedImage,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: _removeSelectedImage,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -226,23 +270,29 @@ class _ChatComponentState extends State<ChatComponent> {
                     IconButton(
                       icon: Icon(
                         Icons.attach_file,
-                        color: (_selectedImage != null && !_isInitializing) 
+                        color: (_selectedImage != null && !_isInitializing && !_isUploadingFile) 
                             ? const Color(0xFF004B93) 
                             : Colors.grey[600],
                       ),
-                      onPressed: _isInitializing ? null : _selectImage,
-                      tooltip: _isInitializing ? 'Inicializando...' : 'Adjuntar imagen',
+                      onPressed: (_isInitializing || _isUploadingFile) ? null : _selectImage,
+                      tooltip: _isInitializing 
+                          ? 'Inicializando...' 
+                          : _isUploadingFile 
+                              ? 'Subiendo archivo...'
+                              : 'Adjuntar archivo',
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: _chatController,
-                        enabled: !_isChatSending && !_isInitializing,
+                        enabled: !_isChatSending && !_isInitializing && !_isUploadingFile,
                         textInputAction: TextInputAction.send,
                         decoration: InputDecoration(
                           hintText: _isInitializing 
                               ? 'Inicializando asistente...' 
-                              : 'Pregunta sobre el análisis...',
+                              : _isUploadingFile
+                                  ? 'Subiendo archivo...'
+                                  : 'Pregunta sobre el análisis...',
                           hintStyle: TextStyle(color: Colors.grey[500]),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
@@ -257,7 +307,7 @@ class _ChatComponentState extends State<ChatComponent> {
                             vertical: 12,
                           ),
                           suffixIcon: IconButton(
-                            icon: (_isChatSending || _isInitializing)
+                            icon: (_isChatSending || _isInitializing || _isUploadingFile)
                                 ? const SizedBox(
                                     width: 20,
                                     height: 20,
@@ -272,7 +322,7 @@ class _ChatComponentState extends State<ChatComponent> {
                                     Icons.send,
                                     color: Color(0xFF004B93),
                                   ),
-                            onPressed: (_isChatSending || _isInitializing) ? null : _sendMessage,
+                            onPressed: (_isChatSending || _isInitializing || _isUploadingFile) ? null : _sendMessage,
                           ),
                         ),
                         onSubmitted: (_) => _sendMessage(),
@@ -438,30 +488,89 @@ class _ChatComponentState extends State<ChatComponent> {
       final files = uploadInput.files;
       if (files != null && files.isNotEmpty) {
         _selectedImage = files[0];
-        _convertImageToBase64();
+        _uploadFileToVolatileKnowledge();
       }
     });
     
     uploadInput.click();
   }
 
-  void _convertImageToBase64() {
+  Future<void> _uploadFileToVolatileKnowledge() async {
     if (_selectedImage == null) return;
     
-    final reader = html.FileReader();
-    reader.onLoadEnd.listen((e) {
-      final result = reader.result as String;
-      setState(() {
-        _selectedImageBase64 = result.split(',')[1]; // Remover el prefijo data:image/...;base64,
-      });
+    setState(() {
+      _isUploadingFile = true;
     });
-    reader.readAsDataUrl(_selectedImage!);
+
+    try {
+      // Crear FormData para multipart/form-data
+      final formData = html.FormData();
+      formData.appendBlob('file', _selectedImage!, _selectedImage!.name);
+
+      // Configurar la request
+      final request = html.HttpRequest();
+      request.open('POST', AppConfig.volatileKnowledgeUrl);
+      request.setRequestHeader('X-API-KEY', AppConfig.iaApiKey);
+      
+      // Escuchar la respuesta
+      request.onLoadEnd.listen((e) {
+        if (request.status == 200) {
+          final responseData = jsonDecode(request.responseText!);
+          setState(() {
+            _volatileKnowledgeId = responseData['id'];
+            _isUploadingFile = false;
+          });
+          print('Archivo subido exitosamente. ID: $_volatileKnowledgeId');
+        } else {
+          setState(() {
+            _isUploadingFile = false;
+          });
+          print('Error al subir archivo: ${request.status} - ${request.responseText}');
+          // Mostrar error al usuario
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error al subir el archivo. Intenta nuevamente.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      });
+
+      request.onError.listen((e) {
+        setState(() {
+          _isUploadingFile = false;
+        });
+        print('Error de red al subir archivo: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error de conexión al subir el archivo.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      });
+
+      // Enviar la request
+      request.send(formData);
+      
+    } catch (e) {
+      setState(() {
+        _isUploadingFile = false;
+      });
+      print('Error al subir archivo: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error al subir el archivo.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _removeSelectedImage() {
     setState(() {
       _selectedImage = null;
       _selectedImageBase64 = null;
+      _volatileKnowledgeId = null;
     });
   }
 
@@ -482,7 +591,7 @@ class _ChatComponentState extends State<ChatComponent> {
 
   void _sendMessage() {
     final messageText = _chatController.text.trim();
-    if (messageText.isEmpty || _isChatSending || _isInitializing) return;
+    if (messageText.isEmpty || _isChatSending || _isInitializing || _isUploadingFile) return;
 
     setState(() {
       _isChatSending = true;
@@ -542,10 +651,10 @@ class _ChatComponentState extends State<ChatComponent> {
           'key': 'message',
           'value': message,
         },
-        if (_selectedImageBase64 != null) ...[
+        if (_volatileKnowledgeId != null) ...[
           {
-            'key': 'image',
-            'value': _selectedImageBase64!,
+            'key': 'volatileKnowledgeIds',
+            'value': [_volatileKnowledgeId!],
           }
         ]
       ];
