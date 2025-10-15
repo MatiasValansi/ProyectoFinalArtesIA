@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:nestle_application/core/router/app_router.dart';
 
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    await dotenv.load(fileName: "../../.env");
+  } catch (e) {
+    // Si no se puede cargar el .env, continuar con valores por defecto
+    debugPrint('No se pudo cargar el archivo .env: $e');
+  }
+  
   runApp(const MainApp());
 }
 
