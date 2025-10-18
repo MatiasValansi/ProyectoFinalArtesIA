@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:nestle_application/core/router/app_router.dart';
-
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   try {
     await dotenv.load(fileName: "../../.env");
   } catch (e) {
     // Si no se puede cargar el .env, continuar con valores por defecto
     debugPrint('No se pudo cargar el archivo .env: $e');
   }
-  
+
   runApp(const MainApp());
 }
 
