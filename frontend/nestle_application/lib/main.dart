@@ -2,20 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:nestle_application/core/router/app_router.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:nestle_application/supabase/supabase_config.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+  // 1️⃣ Cargar variables de entorno antes de todo
   try {
     await dotenv.load(fileName: "../../.env");
+    debugPrint('✅ Archivo .env cargado correctamente.');
   } catch (e) {
-    // Si no se puede cargar el .env, continuar con valores por defecto
-    debugPrint('No se pudo cargar el archivo .env: $e');
+    debugPrint('⚠️ No se pudo cargar el archivo .env: $e');
   }
 
+  // 2️⃣ Inicializar Firebase
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    debugPrint('✅ Firebase inicializado.');
+  } catch (e) {
+    debugPrint('❌ Error al inicializar Firebase: $e');
+  }
+
+  // 3️⃣ Inicializar Supabase
+  try {
+    await SupabaseConfig.initialize();
+    debugPrint('✅ Supabase inicializado.');
+  } catch (e) {
+    debugPrint('❌ Error al inicializar Supabase: $e');
+  }
+
+  // 4️⃣ Correr la app
   runApp(const MainApp());
 }
 

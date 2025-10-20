@@ -15,10 +15,7 @@ class _LoginState extends State<Login> {
   @override
   void initState() {
     super.initState();
-    
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -38,10 +35,10 @@ class _LoginState extends State<Login> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Logo Nestlé
-              Image.asset(
-                "assets/images/NestléLogo.svg.png",
-                height: 120,
-              ),
+            Image.asset(
+              "assets/images/NestléLogo.svg.png",
+              height: 120,
+            ),
             const SizedBox(height: 30),
 
             const Text(
@@ -86,13 +83,13 @@ class _LoginState extends State<Login> {
             ),
             const SizedBox(height: 30),
 
-            // Botón login
+            // Botón login principal
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004B93), // Azul Nestlé
+                  backgroundColor: const Color(0xFF004B93),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -102,7 +99,11 @@ class _LoginState extends State<Login> {
                 },
                 child: const Text(
                   'Ingresar',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -115,6 +116,33 @@ class _LoginState extends State<Login> {
               child: const Text(
                 "¿Olvidaste tu contraseña?",
                 style: TextStyle(color: Color(0xFF004B93)),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // 🧩 Botón temporal para probar el CRUD de Supabase
+            Divider(color: Colors.grey[400]),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 45,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF004B93)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  // Navega a la pantalla de test CRUD
+                  context.push('/test-users');
+                },
+                icon: const Icon(Icons.storage_rounded, color: Color(0xFF004B93)),
+                label: const Text(
+                  'Probar CRUD de Usuarios (Supabase)',
+                  style: TextStyle(color: Color(0xFF004B93)),
+                ),
               ),
             ),
           ],
