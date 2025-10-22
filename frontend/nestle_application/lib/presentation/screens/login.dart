@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/auth/auth_service.dart';
 
 class Login extends StatefulWidget {
   Login({super.key});
@@ -10,11 +11,65 @@ class Login extends StatefulWidget {
 
 class _LoginState extends State<Login> {
   final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
   String inputText = '';
 
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (_usernameController.text.trim().isEmpty || 
+        _passwordController.text.trim().isEmpty) {
+      _showSnackBar('Por favor complete todos los campos', Colors.red);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      bool success = await _authService.signInWithEmailAndPassword(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (success) {
+        // Obtener datos del usuario para pasarlos a Home
+        final userData = await _authService.getCurrentUserData();
+        final userEmail = userData?['email'] ?? _usernameController.text.trim();
+        
+        if (!mounted) return;
+        context.go('/home', extra: userEmail);
+      } else {
+        _showSnackBar('Credenciales incorrectas', Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar('Error al iniciar sesión: $e', Colors.red);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -70,6 +125,7 @@ class _LoginState extends State<Login> {
 
             // Input Password
             TextField(
+              controller: _passwordController,
               obscureText: true,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.lock_outline),
@@ -94,17 +150,24 @@ class _LoginState extends State<Login> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: () {
-                  context.go('/home', extra: _usernameController.text);
-                },
-                child: const Text(
-                  'Ingresar',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                onPressed: _isLoading ? null : _handleLogin,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Ingresar',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
 

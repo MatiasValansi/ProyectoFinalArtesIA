@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/auth/auth_service.dart';
 
 class Home extends StatefulWidget  {
   
@@ -19,6 +20,41 @@ class Home extends StatefulWidget  {
 
 class _HomeState extends State<Home> {
   bool isCollapsed = false; // controla si el sidebar está contraído
+  final AuthService _authService = AuthService();
+  bool _isAdmin = false;
+  String _userRole = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUserRole();
+  }
+
+  Future<void> _checkUserRole() async {
+    try {
+      final isAdmin = await _authService.isCurrentUserAdmin();
+      final role = await _authService.getCurrentUserRole();
+      if (mounted) {
+        setState(() {
+          _isAdmin = isAdmin;
+          _userRole = role ?? '';
+        });
+      }
+    } catch (e) {
+      print('Error obteniendo rol del usuario: $e');
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    try {
+      await _authService.signOut();
+      if (mounted) {
+        context.go('/login');
+      }
+    } catch (e) {
+      print('Error al cerrar sesión: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,16 +104,24 @@ class _HomeState extends State<Home> {
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const Text("Administrador",
+                  Text(_userRole.isNotEmpty ? _userRole : "Cargando...",
                       style: TextStyle(color: Colors.grey)),
                 ],
                 const SizedBox(height: 30),
 
                 // Opciones de menú
-                _menuItem(Icons.folder, "Mis proyectos"),
-                _menuItem(Icons.upload_file, "Documentos cargados"),
-                _menuItem(Icons.person_outline, "Mi perfil"),
-                _menuItem(Icons.settings, "Configuración"),
+                _menuItem(Icons.folder, "Mis proyectos", null),
+                _menuItem(Icons.upload_file, "Documentos cargados", null),
+                _menuItem(Icons.person_outline, "Mi perfil", null),
+                _menuItem(Icons.settings, "Configuración", null),
+                
+                // Opción de administrar usuarios (solo para administradores)
+                if (_isAdmin) ...[
+                  const Divider(),
+                  _menuItem(Icons.admin_panel_settings, "Administrar Usuarios", () {
+                    context.go('/admin-users');
+                  }),
+                ],
 
                 const Spacer(),
 
@@ -93,9 +137,7 @@ class _HomeState extends State<Home> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: () {
-                        context.go('/login', extra: 'From Home Screen');
-                      },
+                      onPressed: _handleLogout,
                       icon: const Icon(Icons.logout, size: 20.0),
                       label: const Text("Cerrar sesión", style: TextStyle(color: Colors.white)),
                     ),
@@ -184,13 +226,13 @@ class _HomeState extends State<Home> {
   }
 
   // Widget menú lateral
-  Widget _menuItem(IconData icon, String text) {
+  Widget _menuItem(IconData icon, String text, VoidCallback? onTap) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF004B93)),
       title: isCollapsed
           ? null
           : Text(text, style: const TextStyle(fontSize: 14)),
-      onTap: () {},
+      onTap: onTap ?? () {},
       dense: true,
     );
   }

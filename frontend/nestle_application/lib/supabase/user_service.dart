@@ -43,4 +43,18 @@ class UserService {
   Future<void> deleteUser(String userId) async {
     await client.from('users').delete().eq('id', userId);
   }
+
+  Future<Map<String, dynamic>?> getUserByAuthUid(String authUid) async {
+    try {
+      final response = await client
+          .from('users')
+          .select()
+          .eq('auth_uid', authUid)
+          .single();
+      return response;
+    } catch (e) {
+      print('Error obteniendo usuario por auth_uid: $e');
+      return null;
+    }
+  }
 }

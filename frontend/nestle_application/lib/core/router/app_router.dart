@@ -4,6 +4,7 @@ import 'package:nestle_application/presentation/screens/home.dart';
 import 'package:nestle_application/presentation/screens/new_art.dart';
 import 'package:nestle_application/presentation/screens/analysis_result.dart';
 import 'package:nestle_application/presentation/screens/test_user_crud.dart';
+import 'package:nestle_application/presentation/screens/admin_users.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -18,6 +19,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/test-users',
       builder: (context, state) => const TestUserCrudScreen(),
+    ),
+    GoRoute(
+      path: '/admin-users',
+      builder: (context, state) => const AdminUsersScreen(),
     ),
 
 
