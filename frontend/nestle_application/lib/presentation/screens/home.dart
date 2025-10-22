@@ -8,6 +8,7 @@ class Home extends StatefulWidget  {
 
   Home({super.key, this.recivedText = 'Usuario'});
   //Home({super.key, required this.recivedText});
+  
 
 
 

@@ -3,6 +3,7 @@ import 'package:nestle_application/presentation/screens/login.dart';
 import 'package:nestle_application/presentation/screens/home.dart';
 import 'package:nestle_application/presentation/screens/new_art.dart';
 import 'package:nestle_application/presentation/screens/analysis_result.dart';
+import 'package:nestle_application/presentation/screens/test_user_crud.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -14,11 +15,11 @@ final appRouter = GoRouter(
       final projectName = state.pathParameters['projectName']!;
       return AnalysisResult(projectName: projectName);
     }),
-    //GoRoute(path: '/home/:text',
-      //  builder: (context, state) {
-        //  final text = state.pathParameters['text']!;
-          //return Home(recivedText: text);
-        //} )
+    GoRoute(
+      path: '/test-users',
+      builder: (context, state) => const TestUserCrudScreen(),
+    ),
+
 
   ],
 ); // GoRouter
