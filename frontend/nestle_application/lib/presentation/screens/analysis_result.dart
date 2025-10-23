@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'dart:html' as html;
 import '../widgets/chat_component.dart';
+import '../../core/auth/auth_service.dart';
 
 
 class AnalysisResult extends StatefulWidget {
@@ -18,9 +19,9 @@ class AnalysisResult extends StatefulWidget {
 }
 
 class _AnalysisResultState extends State<AnalysisResult> {
-  bool isCollapsed = false;
   bool _isLoading = true;
   Map<String, dynamic>? _analysisData;
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -67,183 +68,77 @@ class _AnalysisResultState extends State<AnalysisResult> {
     });
   }
 
+  Future<void> _handleLogout() async {
+    try {
+      await _authService.signOut();
+      if (mounted) {
+        context.pushReplacement('/login');
+      }
+    } catch (e) {
+      print('Error al cerrar sesión: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[200],
-      body: Row(
-        children: [
-          // Sidebar
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: isCollapsed ? 70 : 220,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF004B93),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            context.go('/home');
+          },
+        ),
+        title: const Text(
+          'Resultados del Análisis - Nestlé Validation Tool',
+          style: TextStyle(
             color: Colors.white,
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                
-                // Botón para colapsar/expandir
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: IconButton(
-                    icon: Icon(
-                      isCollapsed ? Icons.arrow_forward_ios : Icons.arrow_back_ios,
-                      size: 18,
-                      color: const Color(0xFF004B93),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        isCollapsed = !isCollapsed;
-                      });
-                    },
-                  ),
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // Logo
-                if (!isCollapsed) ...[
-                  Container(
-                    width: 120,
-                    height: 60,
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/images/NestléLogo.svg.png'),
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                ] else ...[
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/images/NestléLogo.svg.png'),
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                ],
-                
-                const SizedBox(height: 40),
-                
-                // Opciones del menú
-                _buildMenuItem(
-                  icon: Icons.home,
-                  label: 'Inicio',
-                  onTap: () => context.go('/home'),
-                ),
-                _buildMenuItem(
-                  icon: Icons.add_circle,
-                  label: 'Nuevo Análisis',
-                  onTap: () => context.go('/new-art'),
-                ),
-                _buildMenuItem(
-                  icon: Icons.analytics,
-                  label: 'Resultados',
-                  onTap: () {},
-                  isSelected: true,
-                ),
-                
-                const Spacer(),
-                
-                // Botón de logout
-                _buildMenuItem(
-                  icon: Icons.logout,
-                  label: 'Cerrar Sesión',
-                  onTap: () => context.go('/login'),
-                ),
-                
-                const SizedBox(height: 20),
-              ],
-            ),
+            fontWeight: FontWeight.bold,
           ),
-          
-          // Contenido principal
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Color(0xFF004B93)),
-                        onPressed: () => context.go('/home'),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        'Resultados del Análisis',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: const Color(0xFF004B93),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  Text(
-                    'Proyecto: ${widget.projectName}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Contenido
-                  Expanded(
-                    child: _isLoading
-                        ? _buildLoadingWidget()
-                        : _buildAnalysisContent(),
-                  ),
-                ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(
+              onPressed: _handleLogout,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF004B93),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
+              child: const Text('Cerrar sesión'),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool isSelected = false,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: isSelected ? Colors.white : const Color(0xFF004B93),
-          size: 20,
-        ),
-        title: isCollapsed
-            ? null
-            : Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF004B93),
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Título y subtítulo
+            Text(
+              'Proyecto: ${widget.projectName}',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF004B93),
               ),
-        tileColor: isSelected ? const Color(0xFF004B93) : null,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        onTap: onTap,
-        dense: true,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: isCollapsed ? 8 : 16,
-          vertical: 4,
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Contenido
+            Expanded(
+              child: _isLoading
+                  ? _buildLoadingWidget()
+                  : _buildAnalysisContent(),
+            ),
+          ],
         ),
       ),
     );

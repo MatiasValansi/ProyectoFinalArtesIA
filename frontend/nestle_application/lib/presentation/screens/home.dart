@@ -49,7 +49,8 @@ class _HomeState extends State<Home> {
     try {
       await _authService.signOut();
       if (mounted) {
-        context.go('/login');
+        // Usar pushReplacement para evitar que el usuario pueda volver
+        context.pushReplacement('/login');
       }
     } catch (e) {
       print('Error al cerrar sesión: $e');
@@ -111,13 +112,8 @@ class _HomeState extends State<Home> {
 
                 // Opciones de menú
                 _menuItem(Icons.folder, "Mis proyectos", null),
-                _menuItem(Icons.upload_file, "Documentos cargados", null),
-                _menuItem(Icons.person_outline, "Mi perfil", null),
-                _menuItem(Icons.settings, "Configuración", null),
                 
-                // Opción de administrar usuarios (solo para administradores)
                 if (_isAdmin) ...[
-                  const Divider(),
                   _menuItem(Icons.admin_panel_settings, "Administrar Usuarios", () {
                     context.go('/admin-users');
                   }),

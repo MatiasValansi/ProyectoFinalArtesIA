@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:html' as html;
+import '../../core/auth/auth_service.dart';
 
 class NewArt extends StatefulWidget {
   const NewArt({super.key});
@@ -11,6 +12,7 @@ class NewArt extends StatefulWidget {
 
 class _NewArtState extends State<NewArt> {
   final TextEditingController _productNameController = TextEditingController();
+  final AuthService _authService = AuthService();
   List<html.File> _selectedFiles = [];
   bool _isDragOver = false;
   bool _isUploading = false;
@@ -103,14 +105,31 @@ class _NewArtState extends State<NewArt> {
     }
   }
 
+  Future<void> _handleLogout() async {
+    try {
+      await _authService.signOut();
+      if (mounted) {
+        context.pushReplacement('/login');
+      }
+    } catch (e) {
+      print('Error al cerrar sesión: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
         backgroundColor: const Color(0xFF004B93),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            context.go('/home');
+          },
+        ),
         title: const Text(
-          'Nestlé Validation Tool',
+          'Nuevo Proyecto - Nestlé Validation Tool',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -120,9 +139,7 @@ class _NewArtState extends State<NewArt> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: ElevatedButton(
-              onPressed: () {
-                context.go('/login');
-              },
+              onPressed: _handleLogout,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: const Color(0xFF004B93),
@@ -140,25 +157,14 @@ class _NewArtState extends State<NewArt> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Botón hamburguesa y título
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () {
-                    // Aquí podrías abrir un drawer o menú lateral
-                  },
-                  icon: const Icon(Icons.menu, size: 24),
-                ),
-                const SizedBox(width: 16),
-                const Text(
-                  'Crear nuevo arte',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF004B93),
-                  ),
-                ),
-              ],
+            // Título
+            const Text(
+              'Crear nuevo arte',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF004B93),
+              ),
             ),
             
             const SizedBox(height: 32),
@@ -223,25 +229,6 @@ class _NewArtState extends State<NewArt> {
             // Botones
             Row(
               children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      context.go('/home');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[400],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'Volver',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(

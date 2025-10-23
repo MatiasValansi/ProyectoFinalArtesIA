@@ -77,7 +77,13 @@ class AuthService {
 
   /// Cierra sesión
   Future<void> signOut() async {
-    clearUserData();
-    await _firebaseAuth.signOut();
+    try {
+      clearUserData();
+      await _firebaseAuth.signOut();
+    } catch (e) {
+      print('Error al cerrar sesión: $e');
+      // Aún así limpiamos los datos locales
+      clearUserData();
+    }
   }
 }
