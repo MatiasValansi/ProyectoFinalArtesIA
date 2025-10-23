@@ -1,5 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../supabase/user_service.dart';
+import '../../database/user_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
