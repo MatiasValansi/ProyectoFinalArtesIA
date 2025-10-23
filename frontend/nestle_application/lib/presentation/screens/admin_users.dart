@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../supabase/user_service.dart';
 
 class AdminUsersScreen extends StatefulWidget {
@@ -18,11 +19,20 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   final UserService _userService = UserService();
   List<Map<String, dynamic>> _users = [];
   bool _isLoading = false;
+  String? _currentUserAuthUid;
 
   @override
   void initState() {
     super.initState();
+    _getCurrentUser();
     _fetchUsers();
+  }
+
+  Future<void> _getCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _currentUserAuthUid = user.uid;
+    }
   }
 
   @override
@@ -36,7 +46,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     setState(() => _isLoading = true);
     try {
       final data = await _userService.getUsers();
-      setState(() => _users = data);
+      // Filtrar el usuario actual de la lista
+      final filteredUsers = data.where((user) {
+        return user['auth_uid'] != _currentUserAuthUid;
+      }).toList();
+      setState(() => _users = filteredUsers);
     } catch (e) {
       _showSnackBar('Error al obtener usuarios: $e', Colors.red);
     } finally {
