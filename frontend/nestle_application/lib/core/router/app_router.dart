@@ -32,7 +32,8 @@ final appRouter = GoRouter(
     GoRoute(path: '/new-art', builder: (context, state) => const NewArt()),
     GoRoute(path: '/analysis/:projectName', builder: (context, state) {
       final projectName = state.pathParameters['projectName']!;
-      return AnalysisResult(projectName: projectName);
+      final serenityId = state.uri.queryParameters['serenityId'];
+      return AnalysisResult(projectName: projectName, serenityId: serenityId);
     }),
     GoRoute(
       path: '/admin-users',

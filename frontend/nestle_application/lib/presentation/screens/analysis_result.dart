@@ -8,10 +8,12 @@ import '../../core/auth/auth_service.dart';
 
 class AnalysisResult extends StatefulWidget {
   final String projectName;
+  final String? serenityId;
 
   const AnalysisResult({
     super.key,
     required this.projectName,
+    this.serenityId,
   });
 
   @override
@@ -205,6 +207,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                   child: ChatComponent(
                     projectName: widget.projectName,
                     analysisData: _analysisData,
+                    caseSerenityId: widget.serenityId,
                   ),
                 ),
               ],

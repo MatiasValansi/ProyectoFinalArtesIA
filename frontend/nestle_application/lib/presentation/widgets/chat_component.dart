@@ -7,11 +7,13 @@ import '../../core/config/app_config.dart';
 class ChatComponent extends StatefulWidget {
   final String projectName;
   final Map<String, dynamic>? analysisData;
+  final String? caseSerenityId;
 
   const ChatComponent({
     super.key,
     required this.projectName,
     this.analysisData,
+    this.caseSerenityId,
   });
 
   @override
@@ -22,9 +24,7 @@ class _ChatComponentState extends State<ChatComponent> {
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   List<Map<String, dynamic>> _chatMessages = [];
-  String? _chatInstanceId;
   bool _isChatSending = false;
-  bool _isInitializing = true;
   html.File? _selectedImage;
   String? _selectedImageBase64;
   String? _volatileKnowledgeId;
@@ -47,62 +47,11 @@ class _ChatComponentState extends State<ChatComponent> {
     _chatMessages = [
       {
         'isUser': false,
-        'message': 'Conectando con el asistente...',
-        'timestamp': DateTime.now().subtract(const Duration(minutes: 1)),
-        'isLoading': true,
+        'message': '¡Hola! Soy tu asistente de análisis de arte. Puedes preguntarme cualquier cosa sobre el análisis realizado en este proyecto.',
+        'timestamp': DateTime.now(),
+        'isLoading': false,
       },
     ];
-    _initializeChatAgent();
-  }
-
-  Future<void> _initializeChatAgent() async {
-    try {
-      final requestBody = [
-        {
-          'key': 'message',
-          'value': 'Inicializar chat',
-        }
-      ];
-      
-      final response = await http.post(
-        Uri.parse(AppConfig.nestleCheckAgentUrl),
-        headers: AppConfig.apiHeaders,
-        body: jsonEncode(requestBody),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _chatInstanceId = data['instanceId'];
-        
-        print('Instance ID obtenido: $_chatInstanceId');
-        
-        setState(() {
-          // Remover mensaje de carga y agregar mensaje de bienvenida
-          _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
-          _chatMessages.add({
-            'isUser': false,
-            'message': data['content'],
-            'timestamp': DateTime.now(),
-            'isLoading': false,
-          });
-          _isInitializing = false; // Chat inicializado correctamente
-        });
-      } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
-      }
-    } catch (e) {
-      setState(() {
-        // Si falla la inicialización, remover mensaje de carga y mostrar error
-        _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
-        _chatMessages.add({
-          'isUser': false,
-          'message': 'Error al inicializar el asistente. Algunos mensajes podrían no funcionar correctamente.',
-          'timestamp': DateTime.now(),
-          'isLoading': false,
-        });
-        _isInitializing = false; // Terminó la inicialización aunque con error
-      });
-    }
   }
 
   @override
@@ -270,14 +219,12 @@ class _ChatComponentState extends State<ChatComponent> {
                     IconButton(
                       icon: Icon(
                         Icons.attach_file,
-                        color: (_selectedImage != null && !_isInitializing && !_isUploadingFile) 
+                        color: (_selectedImage != null && !_isUploadingFile) 
                             ? const Color(0xFF004B93) 
                             : Colors.grey[600],
                       ),
-                      onPressed: (_isInitializing || _isUploadingFile) ? null : _selectImage,
-                      tooltip: _isInitializing 
-                          ? 'Inicializando...' 
-                          : _isUploadingFile 
+                      onPressed: _isUploadingFile ? null : _selectImage,
+                      tooltip: _isUploadingFile 
                               ? 'Subiendo archivo...'
                               : 'Adjuntar archivo',
                     ),
@@ -285,12 +232,10 @@ class _ChatComponentState extends State<ChatComponent> {
                     Expanded(
                       child: TextField(
                         controller: _chatController,
-                        enabled: !_isChatSending && !_isInitializing && !_isUploadingFile,
+                        enabled: !_isChatSending && !_isUploadingFile,
                         textInputAction: TextInputAction.send,
                         decoration: InputDecoration(
-                          hintText: _isInitializing 
-                              ? 'Inicializando asistente...' 
-                              : _isUploadingFile
+                          hintText: _isUploadingFile
                                   ? 'Subiendo archivo...'
                                   : 'Pregunta sobre el análisis...',
                           hintStyle: TextStyle(color: Colors.grey[500]),
@@ -307,7 +252,7 @@ class _ChatComponentState extends State<ChatComponent> {
                             vertical: 12,
                           ),
                           suffixIcon: IconButton(
-                            icon: (_isChatSending || _isInitializing || _isUploadingFile)
+                            icon: (_isChatSending || _isUploadingFile)
                                 ? const SizedBox(
                                     width: 20,
                                     height: 20,
@@ -322,7 +267,7 @@ class _ChatComponentState extends State<ChatComponent> {
                                     Icons.send,
                                     color: Color(0xFF004B93),
                                   ),
-                            onPressed: (_isChatSending || _isInitializing || _isUploadingFile) ? null : _sendMessage,
+                            onPressed: (_isChatSending || _isUploadingFile) ? null : _sendMessage,
                           ),
                         ),
                         onSubmitted: (_) => _sendMessage(),
@@ -595,7 +540,7 @@ class _ChatComponentState extends State<ChatComponent> {
 
   void _sendMessage() {
     final messageText = _chatController.text.trim();
-    if (messageText.isEmpty || _isChatSending || _isInitializing || _isUploadingFile) return;
+    if (messageText.isEmpty || _isChatSending || _isUploadingFile) return;
 
     setState(() {
       _isChatSending = true;
@@ -630,13 +575,13 @@ class _ChatComponentState extends State<ChatComponent> {
 
   Future<void> _sendMessageToAgent(String message) async {
     try {
-      // Si no hay instancia de chat, mostrar error
-      if (_chatInstanceId == null) {
+      // Si no hay serenity_id del case, mostrar error
+      if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
         setState(() {
           _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
           _chatMessages.add({
             'isUser': false,
-            'message': 'Error: No se pudo conectar con el asistente. Por favor, recarga la página e intenta nuevamente.',
+            'message': 'Error: No se pudo identificar el caso para el chat. Verifica que el caso tenga un ID de Serenity válido.',
             'timestamp': DateTime.now(),
             'isLoading': false,
           });
@@ -649,7 +594,7 @@ class _ChatComponentState extends State<ChatComponent> {
       final requestBody = [
         {
           'key': 'chatId',
-          'value': _chatInstanceId!,
+          'value': widget.caseSerenityId!,
         },
         {
           'key': 'message',

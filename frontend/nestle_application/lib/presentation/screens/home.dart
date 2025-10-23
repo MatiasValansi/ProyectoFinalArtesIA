@@ -326,7 +326,7 @@ class _HomeState extends State<Home> {
         ),
         trailing: TextButton(
           onPressed: () {
-            context.go('/analysis/${Uri.encodeComponent(nombre)}');
+            context.go('/analysis/${Uri.encodeComponent(nombre)}?serenityId=${Uri.encodeComponent(caseModel.serenityId)}');
           },
           child: const Text("Ver detalles"),
         ),
