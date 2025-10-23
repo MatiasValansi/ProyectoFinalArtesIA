@@ -195,290 +195,253 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[200],
-      body: Row(
-        children: [
-          // Sidebar simple para mantener consistencia
-          Container(
-            width: 220,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF004B93),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => context.go('/home'),
+        ),
+        title: const Text(
+          "Administración de Usuarios",
+          style: TextStyle(
             color: Colors.white,
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                ListTile(
-                  leading: const Icon(Icons.arrow_back, color: Color(0xFF004B93)),
-                  title: const Text('Volver al inicio'),
-                  onTap: () => context.go('/home'),
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.people, color: Color(0xFF004B93)),
-                  title: const Text('Administrar Usuarios'),
-                  selected: true,
-                  selectedTileColor: Colors.blue.withOpacity(0.1),
-                ),
-              ],
-            ),
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
-          
-          // Contenido principal
-          Expanded(
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  height: 70,
-                  color: const Color(0xFF004B93),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  alignment: Alignment.centerLeft,
-                  child: const Text(
-                    "Administración de Usuarios",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Panel izquierdo - Crear usuario
+            Expanded(
+              flex: 1,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Crear Nuevo Usuario',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _emailController,
+                              decoration: const InputDecoration(
+                                labelText: 'Email',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.email_outlined),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Ingrese un email';
+                                }
+                                if (!value.contains('@')) {
+                                  return 'Ingrese un email válido';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 15),
+                            TextFormField(
+                              controller: _passwordController,
+                              decoration: const InputDecoration(
+                                labelText: 'Contraseña',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.lock_outline),
+                              ),
+                              obscureText: true,
+                              validator: (value) {
+                                if (value == null || value.length < 6) {
+                                  return 'Mínimo 6 caracteres';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 15),
+                            DropdownButtonFormField<String>(
+                              value: _selectedRole,
+                              decoration: const InputDecoration(
+                                labelText: 'Rol',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.badge_outlined),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'USUARIO',
+                                  child: Text('USUARIO'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'SUPERVISOR',
+                                  child: Text('SUPERVISOR'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'ADMINISTRADOR',
+                                  child: Text('ADMINISTRADOR'),
+                                ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _selectedRole = value!),
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF004B93),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 15,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: _isLoading ? null : _createUser,
+                                icon: const Icon(Icons.add, color: Colors.white),
+                                label: const Text(
+                                  'Crear Usuario',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                
-                // Contenido
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Panel izquierdo - Crear usuario
-                        Expanded(
-                          flex: 1,
-                          child: Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Crear Nuevo Usuario',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+              ),
+            ),
+            
+            const SizedBox(width: 20),
+            
+            // Panel derecho - Lista de usuarios
+            Expanded(
+              flex: 2,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Usuarios Registrados',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _fetchUsers,
+                            icon: const Icon(Icons.refresh),
+                            tooltip: 'Actualizar lista',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Expanded(
+                        child: _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : _users.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      'No hay usuarios registrados',
+                                      style: TextStyle(fontSize: 16),
                                     ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  Form(
-                                    key: _formKey,
-                                    child: Column(
-                                      children: [
-                                        TextFormField(
-                                          controller: _emailController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Email',
-                                            border: OutlineInputBorder(),
-                                            prefixIcon: Icon(Icons.email_outlined),
+                                  )
+                                : ListView.builder(
+                                    itemCount: _users.length,
+                                    itemBuilder: (context, index) {
+                                      final user = _users[index];
+                                      final role = user['rol']?.toString() ?? 'USUARIO';
+                                      
+                                      return Card(
+                                        margin: const EdgeInsets.symmetric(vertical: 4),
+                                        child: ListTile(
+                                          leading: CircleAvatar(
+                                            backgroundColor: _getRoleColor(role).withOpacity(0.2),
+                                            child: Icon(
+                                              _getRoleIcon(role),
+                                              color: _getRoleColor(role),
+                                            ),
                                           ),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return 'Ingrese un email';
-                                            }
-                                            if (!value.contains('@')) {
-                                              return 'Ingrese un email válido';
-                                            }
-                                            return null;
-                                          },
-                                        ),
-                                        const SizedBox(height: 15),
-                                        TextFormField(
-                                          controller: _passwordController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Contraseña',
-                                            border: OutlineInputBorder(),
-                                            prefixIcon: Icon(Icons.lock_outline),
+                                          title: Text(
+                                            user['email'] ?? 'Sin email',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
-                                          obscureText: true,
-                                          validator: (value) {
-                                            if (value == null || value.length < 6) {
-                                              return 'Mínimo 6 caracteres';
-                                            }
-                                            return null;
-                                          },
-                                        ),
-                                        const SizedBox(height: 15),
-                                        DropdownButtonFormField<String>(
-                                          value: _selectedRole,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Rol',
-                                            border: OutlineInputBorder(),
-                                            prefixIcon: Icon(Icons.badge_outlined),
-                                          ),
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'USUARIO',
-                                              child: Text('USUARIO'),
+                                          subtitle: Container(
+                                            margin: const EdgeInsets.only(top: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 2,
                                             ),
-                                            DropdownMenuItem(
-                                              value: 'SUPERVISOR',
-                                              child: Text('SUPERVISOR'),
+                                            decoration: BoxDecoration(
+                                              color: _getRoleColor(role).withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(12),
                                             ),
-                                            DropdownMenuItem(
-                                              value: 'ADMINISTRADOR',
-                                              child: Text('ADMINISTRADOR'),
-                                            ),
-                                          ],
-                                          onChanged: (value) =>
-                                              setState(() => _selectedRole = value!),
-                                        ),
-                                        const SizedBox(height: 20),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton.icon(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF004B93),
-                                              padding: const EdgeInsets.symmetric(
-                                                vertical: 15,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                            ),
-                                            onPressed: _isLoading ? null : _createUser,
-                                            icon: const Icon(Icons.add, color: Colors.white),
-                                            label: const Text(
-                                              'Crear Usuario',
+                                            child: Text(
+                                              role,
                                               style: TextStyle(
-                                                fontSize: 16,
+                                                color: _getRoleColor(role),
                                                 fontWeight: FontWeight.bold,
-                                                color: Colors.white,
+                                                fontSize: 12,
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        
-                        const SizedBox(width: 20),
-                        
-                        // Panel derecho - Lista de usuarios
-                        Expanded(
-                          flex: 2,
-                          child: Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'Usuarios Registrados',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      IconButton(
-                                        onPressed: _fetchUsers,
-                                        icon: const Icon(Icons.refresh),
-                                        tooltip: 'Actualizar lista',
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
-                                  Expanded(
-                                    child: _isLoading
-                                        ? const Center(child: CircularProgressIndicator())
-                                        : _users.isEmpty
-                                            ? const Center(
-                                                child: Text(
-                                                  'No hay usuarios registrados',
-                                                  style: TextStyle(fontSize: 16),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.edit),
+                                                onPressed: () => _updateUserRole(
+                                                  user['id'].toString(),
+                                                  role,
                                                 ),
-                                              )
-                                            : ListView.builder(
-                                                itemCount: _users.length,
-                                                itemBuilder: (context, index) {
-                                                  final user = _users[index];
-                                                  final role = user['rol']?.toString() ?? 'USUARIO';
-                                                  
-                                                  return Card(
-                                                    margin: const EdgeInsets.symmetric(vertical: 4),
-                                                    child: ListTile(
-                                                      leading: CircleAvatar(
-                                                        backgroundColor: _getRoleColor(role).withOpacity(0.2),
-                                                        child: Icon(
-                                                          _getRoleIcon(role),
-                                                          color: _getRoleColor(role),
-                                                        ),
-                                                      ),
-                                                      title: Text(
-                                                        user['email'] ?? 'Sin email',
-                                                        style: const TextStyle(
-                                                          fontWeight: FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                      subtitle: Container(
-                                                        margin: const EdgeInsets.only(top: 4),
-                                                        padding: const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 2,
-                                                        ),
-                                                        decoration: BoxDecoration(
-                                                          color: _getRoleColor(role).withOpacity(0.1),
-                                                          borderRadius: BorderRadius.circular(12),
-                                                        ),
-                                                        child: Text(
-                                                          role,
-                                                          style: TextStyle(
-                                                            color: _getRoleColor(role),
-                                                            fontWeight: FontWeight.bold,
-                                                            fontSize: 12,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      trailing: Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          IconButton(
-                                                            icon: const Icon(Icons.edit),
-                                                            onPressed: () => _updateUserRole(
-                                                              user['id'].toString(),
-                                                              role,
-                                                            ),
-                                                            tooltip: 'Cambiar rol',
-                                                          ),
-                                                          IconButton(
-                                                            icon: const Icon(Icons.delete, color: Colors.red),
-                                                            onPressed: () => _deleteUser(
-                                                              user['id'].toString(),
-                                                              user['email'] ?? 'Sin email',
-                                                            ),
-                                                            tooltip: 'Eliminar usuario',
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
+                                                tooltip: 'Cambiar rol',
                                               ),
+                                              IconButton(
+                                                icon: const Icon(Icons.delete, color: Colors.red),
+                                                onPressed: () => _deleteUser(
+                                                  user['id'].toString(),
+                                                  user['email'] ?? 'Sin email',
+                                                ),
+                                                tooltip: 'Eliminar usuario',
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
