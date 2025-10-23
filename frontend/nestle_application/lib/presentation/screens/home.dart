@@ -1,18 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/auth/auth_service.dart';
 
 class Home extends StatefulWidget  {
-  
-  
-  final  String recivedText;
-
-  Home({super.key, this.recivedText = 'Usuario'});
-  //Home({super.key, required this.recivedText});
-  
-
-
-
+  const Home({super.key});
 
   @override
   State<Home> createState() => _HomeState();
@@ -22,11 +14,22 @@ class _HomeState extends State<Home> {
   final AuthService _authService = AuthService();
   bool _isAdmin = false;
   String _userRole = '';
+  String _userEmail = 'Usuario';
 
   @override
   void initState() {
     super.initState();
     _checkUserRole();
+    _getUserInfo();
+  }
+
+  void _getUserInfo() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.email != null) {
+      setState(() {
+        _userEmail = user.email!;
+      });
+    }
   }
 
   Future<void> _checkUserRole() async {
@@ -78,7 +81,7 @@ class _HomeState extends State<Home> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  widget.recivedText,
+                  _userEmail,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,

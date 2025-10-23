@@ -44,12 +44,8 @@ class _LoginState extends State<Login> {
       );
 
       if (success) {
-        // Obtener datos del usuario para pasarlos a Home
-        final userData = await _authService.getCurrentUserData();
-        final userEmail = userData?['email'] ?? _usernameController.text.trim();
-        
         if (!mounted) return;
-        context.go('/home', extra: userEmail);
+        context.go('/home');
       } else {
         _showSnackBar('Credenciales incorrectas', Colors.red);
       }

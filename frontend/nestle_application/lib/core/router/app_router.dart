@@ -28,7 +28,7 @@ final appRouter = GoRouter(
   },
   routes: [
     GoRoute(path: '/login', builder: (context, state) => Login()),
-    GoRoute(path: '/home', builder: (context, state) => Home(recivedText: state.extra as String? ?? 'Usuario')),
+    GoRoute(path: '/home', builder: (context, state) => const Home()),
     GoRoute(path: '/new-art', builder: (context, state) => const NewArt()),
     GoRoute(path: '/analysis/:projectName', builder: (context, state) {
       final projectName = state.pathParameters['projectName']!;
