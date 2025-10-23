@@ -395,12 +395,16 @@ class _ChatComponentState extends State<ChatComponent> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              messageText,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
+                            Flexible(
+                              child: Text(
+                                messageText,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
                               ),
                             ),
                           ],

@@ -76,97 +76,102 @@ class _LoginState extends State<Login> {
         backgroundColor: const Color(0xFF004B93), // Azul Nestlé
         title: const Text(
           'Nestlé Login',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo Nestlé
-            Image.asset(
-              "assets/images/NestléLogo.svg.png",
-              height: 120,
-            ),
-            const SizedBox(height: 30),
-
-            const Text(
-              'Bienvenido',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Inicia sesión con tus credenciales Nestlé',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 30),
-
-            // Input Username
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.person_outline),
-                labelText: 'Usuario',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo Nestlé
+                Image.asset(
+                  "assets/images/NestléLogo.svg.png",
+                  height: 120,
                 ),
-                filled: true,
-                fillColor: Colors.grey[100],
-              ),
-            ),
-            const SizedBox(height: 20),
+                const SizedBox(height: 30),
 
-            // Input Password
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.lock_outline),
-                labelText: 'Contraseña',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                const Text(
+                  'Bienvenido',
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                 ),
-                filled: true,
-                fillColor: Colors.grey[100],
-              ),
-            ),
-            const SizedBox(height: 30),
+                const SizedBox(height: 8),
+                const Text(
+                  'Inicia sesión con tus credenciales Nestlé',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                const SizedBox(height: 30),
 
-            // Botón login principal
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004B93),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                // Input Username
+                TextField(
+                  controller: _usernameController,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.person_outline),
+                    labelText: 'Usuario',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
                   ),
                 ),
-                onPressed: _isLoading ? null : _handleLogin,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Ingresar',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                const SizedBox(height: 20),
+
+                // Input Password
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    labelText: 'Contraseña',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Botón login principal
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF004B93),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-              ),
+                    ),
+                    onPressed: _isLoading ? null : _handleLogin,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Ingresar',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

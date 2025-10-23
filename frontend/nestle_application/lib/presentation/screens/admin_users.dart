@@ -363,12 +363,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
-                          IconButton(
-                            onPressed: _fetchUsers,
-                            icon: const Icon(Icons.refresh),
-                            tooltip: 'Actualizar lista',
-                          ),
+                          )
                         ],
                       ),
                       const SizedBox(height: 20),

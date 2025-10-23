@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/auth/auth_service.dart';
+import '../../database/cases_service.dart';
+import '../../database/user_service.dart';
+import '../../models/case_model.dart';
+import '../../models/user_model.dart';
 
 class Home extends StatefulWidget  {
   const Home({super.key});
@@ -12,23 +16,59 @@ class Home extends StatefulWidget  {
 
 class _HomeState extends State<Home> {
   final AuthService _authService = AuthService();
+  final CasesService _casesService = CasesService();
+  final UserService _userService = UserService();
+  
   bool _isAdmin = false;
   String _userRole = '';
   String _userEmail = 'Usuario';
+  List<CaseModel> _userCases = [];
+  bool _isLoading = true;
+  UserModel? _currentUser;
 
   @override
   void initState() {
     super.initState();
-    _checkUserRole();
-    _getUserInfo();
+    _initializeHomeData();
   }
 
-  void _getUserInfo() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null && user.email != null) {
-      setState(() {
-        _userEmail = user.email!;
-      });
+  Future<void> _initializeHomeData() async {
+    try {
+      await _getUserInfo();
+      await _checkUserRole();
+      await _loadUserCases();
+    } catch (e) {
+      print('Error inicializando datos del home: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _getUserInfo() async {
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser != null && firebaseUser.uid.isNotEmpty) {
+      try {
+        // Obtener el usuario de Supabase usando el authUid de Firebase
+        final user = await _userService.getUserByAuthUidAsModel(firebaseUser.uid);
+        if (mounted && user != null) {
+          setState(() {
+            _currentUser = user;
+            _userEmail = user.email;
+          });
+        }
+      } catch (e) {
+        print('Error obteniendo información del usuario: $e');
+        // Fallback al email de Firebase si hay error
+        if (mounted) {
+          setState(() {
+            _userEmail = firebaseUser.email ?? 'Usuario';
+          });
+        }
+      }
     }
   }
 
@@ -44,6 +84,39 @@ class _HomeState extends State<Home> {
       }
     } catch (e) {
       print('Error obteniendo rol del usuario: $e');
+    }
+  }
+
+  Future<void> _loadUserCases() async {
+    if (_currentUser?.id == null) return;
+    
+    try {
+      final casesData = await _casesService.getCasesByUser(_currentUser!.id!);
+      final cases = casesData.map((json) => CaseModel.fromJson(json)).toList();
+      
+      if (mounted) {
+        setState(() {
+          _userCases = cases;
+        });
+      }
+    } catch (e) {
+      print('Error cargando casos del usuario: $e');
+    }
+  }
+
+  Future<void> _refreshCases() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+    
+    await _loadUserCases();
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -130,9 +203,13 @@ class _HomeState extends State<Home> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Proyectos Activos",
-                          style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold)),
+                      Row(
+                        children: [
+                          const Text("Mis Proyectos",
+                              style: TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                       ElevatedButton.icon(
                         onPressed: () {
                           context.go('/new-art');
@@ -154,18 +231,57 @@ class _HomeState extends State<Home> {
                   const SizedBox(height: 16),
 
                   Expanded(
-                    child: ListView(
-                      children: [
-                        _projectRow("Proyecto Nido", "Aprobado",
-                            Colors.green, context),
-                        _projectRow("Proyecto Nescafé", "Pendiente",
-                            Colors.orange, context),
-                        _projectRow("Proyecto Nesquik", "Observado",
-                            Colors.red, context),
-                        _projectRow("Proyecto KitKat", "Aprobado",
-                            Colors.green, context),
-                      ],
-                    ),
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF004B93),
+                              ),
+                            ),
+                          )
+                        : _userCases.isEmpty
+                            ? const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.folder_open,
+                                      size: 64,
+                                      color: Colors.grey,
+                                    ),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'No tienes proyectos asignados',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Los proyectos asignados a ti aparecerán aquí',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: _userCases.length,
+                                itemBuilder: (context, index) {
+                                  final caseModel = _userCases[index];
+                                  return _projectRow(
+                                    caseModel.name,
+                                    caseModel.active ? "Activo" : "Inactivo",
+                                    caseModel.active ? Colors.green : Colors.red,
+                                    context,
+                                    caseModel,
+                                  );
+                                },
+                              ),
                   ),
                 ],
               ),
@@ -177,8 +293,8 @@ class _HomeState extends State<Home> {
   }
 
   // Widget fila de proyecto
-  Widget _projectRow(
-      String nombre, String estado, Color color, BuildContext context) {
+  Widget _projectRow(String nombre, String estado, Color color, 
+      BuildContext context, CaseModel caseModel) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
@@ -196,6 +312,16 @@ class _HomeState extends State<Home> {
                 style: TextStyle(color: color, fontWeight: FontWeight.bold),
               ),
             ),
+            const SizedBox(width: 8),
+            // Mostrar ID de Serenity si existe
+            if (caseModel.serenityId.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(12),
+                )
+              ),
           ],
         ),
         trailing: TextButton(
