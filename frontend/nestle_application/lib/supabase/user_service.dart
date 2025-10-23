@@ -1,10 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../supabase/supabase_config.dart';
 
 class UserService {
   final SupabaseClient client = SupabaseConfig.client;
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
   Future<void> createUser({
     required String email,
@@ -12,8 +12,25 @@ class UserService {
     required String rol,
   }) async {
     try {
-      // 1️⃣ Crear usuario en Firebase Auth
-      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+      // Crear una instancia secundaria de Firebase App para crear usuarios sin afectar la sesión actual
+      FirebaseApp? secondaryApp;
+      
+      try {
+        // Intentar obtener la app secundaria si ya existe
+        secondaryApp = Firebase.app('SecondaryApp');
+      } catch (e) {
+        // Si no existe, crear una nueva instancia
+        secondaryApp = await Firebase.initializeApp(
+          name: 'SecondaryApp',
+          options: Firebase.app().options,
+        );
+      }
+
+      // Usar la instancia secundaria para crear el usuario
+      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+      
+      // 1️⃣ Crear usuario usando la instancia secundaria
+      UserCredential userCredential = await secondaryAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -26,6 +43,11 @@ class UserService {
         'email': email,
         'rol': rol.toUpperCase(),
       });
+
+      // 3️⃣ Cerrar sesión de la instancia secundaria
+      await secondaryAuth.signOut();
+      
+      // La sesión principal del administrador se mantiene intacta
     } catch (e) {
       throw Exception('Error al crear usuario: $e');
     }

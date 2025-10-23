@@ -19,7 +19,6 @@ class Home extends StatefulWidget  {
 }
 
 class _HomeState extends State<Home> {
-  bool isCollapsed = false; // controla si el sidebar está contraído
   final AuthService _authService = AuthService();
   bool _isAdmin = false;
   String _userRole = '';
@@ -61,175 +60,116 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[200],
-
-      body: Row(
-        children: [
-          // Sidebar
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: isCollapsed ? 70 : 220,
-            color: Colors.white,
-            child: Column(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF004B93),
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            // Avatar y nombre del usuario
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.white.withOpacity(0.2),
+              child: const Icon(Icons.person, size: 20, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 20),
-
-                // Botón para colapsar/expandir
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: IconButton(
-                    icon: Icon(
-                      isCollapsed ? Icons.arrow_forward_ios : Icons.arrow_back_ios,
-                      size: 18,
-                      color: const Color(0xFF004B93),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        isCollapsed = !isCollapsed;
-                      });
-                    },
+                Text(
+                  widget.recivedText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-
-                const SizedBox(height: 10),
-
-                // Avatar y nombre
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.blueGrey,
-                  child: const Icon(Icons.person, size: 35, color: Colors.white),
+                Text(
+                  _userRole.isNotEmpty ? _userRole : "Cargando...",
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
                 ),
-                if (!isCollapsed) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.recivedText,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(_userRole.isNotEmpty ? _userRole : "Cargando...",
-                      style: TextStyle(color: Colors.grey)),
-                ],
-                const SizedBox(height: 30),
-
-                // Opciones de menú
-                _menuItem(Icons.folder, "Mis proyectos", null),
-                
-                if (_isAdmin) ...[
-                  _menuItem(Icons.admin_panel_settings, "Administrar Usuarios", () {
-                    context.go('/admin-users');
-                  }),
-                ],
-
-                const Spacer(),
-
-                // Botón logout solo si el sidebar está expandido
-                if (!isCollapsed)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF004B93),
-                        minimumSize: Size(double.infinity, 40),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _handleLogout,
-                      icon: const Icon(Icons.logout, size: 20.0),
-                      label: const Text("Cerrar sesión", style: TextStyle(color: Colors.white)),
-                    ),
-                  ),
               ],
             ),
+          ],
+        ),
+        actions: [
+          // Botón Administrar Usuarios (solo para admins)
+          if (_isAdmin) ...[
+            IconButton(
+              icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
+              onPressed: () => context.go('/admin-users'),
+              tooltip: 'Administrar Usuarios',
+            ),
+          ],
+          // Botón Cerrar Sesión
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: _handleLogout,
+            tooltip: 'Cerrar Sesión',
           ),
-
-          // Contenido principal
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Lista de proyectos
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Container(
-                  height: 70,
-                  color: const Color(0xFF004B93),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  alignment: Alignment.centerLeft,
-                  child: const Text(
-                    "Nestlé Validation Tool",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
-
-                // Lista de proyectos
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("Proyectos Activos",
-                                style: TextStyle(
-                                    fontSize: 22, fontWeight: FontWeight.bold)),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                context.go('/new-art');
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF004B93),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text("Agregar Proyecto"),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        Expanded(
-                          child: ListView(
-                            children: [
-                              _projectRow("Proyecto Nido", "Aprobado",
-                                  Colors.green, context),
-                              _projectRow("Proyecto Nescafé", "Pendiente",
-                                  Colors.orange, context),
-                              _projectRow("Proyecto Nesquik", "Observado",
-                                  Colors.red, context),
-                              _projectRow("Proyecto KitKat", "Aprobado",
-                                  Colors.green, context),
-                            ],
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Proyectos Activos",
+                          style: TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.bold)),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          context.go('/new-art');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF004B93),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text("Agregar Proyecto"),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        _projectRow("Proyecto Nido", "Aprobado",
+                            Colors.green, context),
+                        _projectRow("Proyecto Nescafé", "Pendiente",
+                            Colors.orange, context),
+                        _projectRow("Proyecto Nesquik", "Observado",
+                            Colors.red, context),
+                        _projectRow("Proyecto KitKat", "Aprobado",
+                            Colors.green, context),
                       ],
                     ),
                   ),
-                )
-              ],
+                ],
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  // Widget menú lateral
-  Widget _menuItem(IconData icon, String text, VoidCallback? onTap) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFF004B93)),
-      title: isCollapsed
-          ? null
-          : Text(text, style: const TextStyle(fontSize: 14)),
-      onTap: onTap ?? () {},
-      dense: true,
     );
   }
 
