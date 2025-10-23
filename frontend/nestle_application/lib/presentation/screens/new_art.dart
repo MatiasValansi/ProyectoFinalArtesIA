@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:html' as html;
 import '../../core/auth/auth_service.dart';
+import '../../core/services/serenity_api_service.dart';
+import '../../database/cases_service.dart';
+import '../../models/case_model.dart';
 
 class NewArt extends StatefulWidget {
   const NewArt({super.key});
@@ -13,9 +16,12 @@ class NewArt extends StatefulWidget {
 class _NewArtState extends State<NewArt> {
   final TextEditingController _productNameController = TextEditingController();
   final AuthService _authService = AuthService();
+  final SerenityApiService _serenityApiService = SerenityApiService();
+  final CasesService _casesService = CasesService();
   List<html.File> _selectedFiles = [];
   bool _isDragOver = false;
   bool _isUploading = false;
+  String _uploadStatus = '';
 
   @override
   void dispose() {
@@ -72,9 +78,111 @@ class _NewArtState extends State<NewArt> {
     });
 
     try {
-      // Aquí iría la lógica para enviar los archivos al backend
-      // Por ahora simulamos una carga
-      await Future.delayed(const Duration(seconds: 2));
+      // Obtener los datos del usuario actual
+      final userData = await _authService.getCurrentUserData();
+      if (userData == null) {
+        throw Exception('No se pudo obtener la información del usuario');
+      }
+
+      final userId = userData['id']?.toString();
+      if (userId == null) {
+        throw Exception('ID de usuario no válido');
+      }
+
+      // Procesar cada archivo seleccionado secuencialmente
+      for (int i = 0; i < _selectedFiles.length; i++) {
+        final file = _selectedFiles[i];
+        
+        try {
+          print('📤 Procesando archivo ${i + 1}/${_selectedFiles.length}: ${file.name}');
+          
+          // Actualizar estado en UI
+          setState(() {
+            _uploadStatus = 'Procesando ${i + 1}/${_selectedFiles.length}: ${file.name}';
+          });
+          
+          // 1. Inicializar conversación
+          print('   🔄 Iniciando conversación...');
+          setState(() {
+            _uploadStatus = 'Iniciando conversación ${i + 1}/${_selectedFiles.length}...';
+          });
+          
+          final chatId = await _serenityApiService.initializeChat();
+          print('   ✅ Conversación iniciada - Chat ID: $chatId');
+          
+          // Pequeña pausa entre operaciones
+          await Future.delayed(const Duration(milliseconds: 1000));
+          
+          // 2. Subir archivo a Serenity API
+          print('   🔄 Subiendo archivo...');
+          setState(() {
+            _uploadStatus = 'Subiendo archivo ${i + 1}/${_selectedFiles.length}... (Esto puede tomar unos minutos para archivos grandes)';
+          });
+          
+          final uploadResponse = await _serenityApiService.uploadFile(file);
+          print('   ✅ Archivo subido - ID: ${uploadResponse.id}');
+          
+          // Pequeña pausa entre operaciones
+          await Future.delayed(const Duration(milliseconds: 1000));
+          
+          // 3. Ejecutar análisis con el chat ID y el ID del archivo
+          print('   🔄 Ejecutando análisis...');
+          setState(() {
+            _uploadStatus = 'Analizando archivo ${i + 1}/${_selectedFiles.length}... (Procesando con IA, puede tomar varios minutos)';
+          });
+          
+          final analysisResponse = await _serenityApiService.executeAnalysis(chatId, uploadResponse.id);
+          print('   ✅ Análisis completado - Instance ID: ${analysisResponse.instanceId}');
+          
+          // Pequeña pausa entre operaciones
+          await Future.delayed(const Duration(milliseconds: 1000));
+          
+          // 4. Guardar en la base de datos
+          print('   🔄 Guardando en base de datos...');
+          setState(() {
+            _uploadStatus = 'Guardando resultados ${i + 1}/${_selectedFiles.length}...';
+          });
+          
+          await _casesService.createCaseFromModel(
+            CaseModel(
+              name: _productNameController.text.trim(),
+              serenityId: analysisResponse.instanceId,
+              userId: userId,
+              arteId: [uploadResponse.id], // Pasar como lista
+            ),
+          );
+          print('   ✅ Caso guardado exitosamente');
+          
+          print('✅ Archivo procesado completamente: ${file.name}');
+          
+        } catch (fileError) {
+          print('❌ Error procesando archivo ${file.name}: $fileError');
+          
+          // Mostrar error específico al usuario
+          if (mounted) {
+            String errorMessage = 'Error procesando ${file.name}';
+            
+            if (fileError.toString().contains('timeout') || fileError.toString().contains('Request timeout')) {
+              errorMessage = 'Timeout procesando ${file.name}. El archivo puede ser muy grande o la conexión lenta. Intenta con un archivo más pequeño.';
+            } else if (fileError.toString().contains('Network error')) {
+              errorMessage = 'Error de conexión procesando ${file.name}. Verifica tu conexión a internet.';
+            } else {
+              errorMessage = 'Error procesando ${file.name}: ${fileError.toString()}';
+            }
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(errorMessage),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 6),
+              ),
+            );
+          }
+          
+          // Continuamos con el siguiente archivo en caso de error
+          continue;
+        }
+      }
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -84,7 +192,7 @@ class _NewArtState extends State<NewArt> {
           ),
         );
         
-        // Navegar de vuelta al home o a una pantalla de resultados
+        // Navegar de vuelta al home
         context.go('/home');
       }
     } catch (e) {
@@ -100,6 +208,7 @@ class _NewArtState extends State<NewArt> {
       if (mounted) {
         setState(() {
           _isUploading = false;
+          _uploadStatus = '';
         });
       }
     }
@@ -242,13 +351,33 @@ class _NewArtState extends State<NewArt> {
                       ),
                     ),
                     child: _isUploading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                              if (_uploadStatus.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Flexible(
+                                  child: Text(
+                                    _uploadStatus,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ],
                           )
                         : const Text(
                             'Enviar a análisis',
@@ -282,7 +411,7 @@ class _NewArtState extends State<NewArt> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Tamaño máximo: 50mb',
+              'Formatos soportados: JPG, PNG, PDF',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],

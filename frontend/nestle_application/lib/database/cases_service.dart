@@ -7,15 +7,17 @@ class CasesService {
 
   /// Crear un nuevo caso
   Future<Map<String, dynamic>> createCase({
+    required String name,
     required String serenityId,
     required String userId,
-    required String arteId,
+    required List<String> arteId,
   }) async {
     try {
       final response = await client.from('cases').insert({
+        'name': name,
         'serenity_id': serenityId,
         'user_id': userId,
-        'arte_id': arteId,
+        'arte_id': arteId, // Ahora es una lista
         'active': true,
         'created_at': DateTime.now().toIso8601String(),
       }).select().single();
@@ -87,7 +89,7 @@ class CasesService {
       final response = await client
           .from('cases')
           .select()
-          .eq('arte_id', arteId)
+          .contains('arte_id', [arteId]) // Buscar dentro del array
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -135,7 +137,7 @@ class CasesService {
   }
 
   /// Actualizar arte_id de un caso
-  Future<void> updateCaseArteId(String caseId, String newArteId) async {
+  Future<void> updateCaseArteId(String caseId, List<String> newArteId) async {
     try {
       await client
           .from('cases')
