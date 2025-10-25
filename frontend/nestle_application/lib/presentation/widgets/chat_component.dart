@@ -469,7 +469,6 @@ class _ChatComponentState extends State<ChatComponent> {
             _volatileKnowledgeId = responseData['id'];
             _isUploadingFile = false;
           });
-          print('Archivo subido exitosamente. ID: $_volatileKnowledgeId');
         } else {
           setState(() {
             _isUploadingFile = false;
@@ -613,9 +612,6 @@ class _ChatComponentState extends State<ChatComponent> {
         headers: AppConfig.apiHeaders,
         body: jsonEncode(requestBody),
       );
-
-      print('Respuesta mensaje - Status: ${response.statusCode}');
-      print('Respuesta mensaje - Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

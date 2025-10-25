@@ -66,7 +66,7 @@ class _NewArtState extends State<NewArt> {
     if (_selectedFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor selecciona al menos un archivo'),
+          content: Text('Por favor selecciona un archivo'),
           backgroundColor: Colors.red,
         ),
       );
@@ -93,56 +93,13 @@ class _NewArtState extends State<NewArt> {
       for (int i = 0; i < _selectedFiles.length; i++) {
         final file = _selectedFiles[i];
         
-        try {
-          print('📤 Procesando archivo ${i + 1}/${_selectedFiles.length}: ${file.name}');
-          
-          // Actualizar estado en UI
-          setState(() {
-            _uploadStatus = 'Procesando ${i + 1}/${_selectedFiles.length}: ${file.name}';
-          });
-          
-          // 1. Inicializar conversación
-          print('   🔄 Iniciando conversación...');
-          setState(() {
-            _uploadStatus = 'Iniciando conversación ${i + 1}/${_selectedFiles.length}...';
-          });
-          
+        try {    
           final chatId = await _serenityApiService.initializeChat();
-          print('   ✅ Conversación iniciada - Chat ID: $chatId');
-          
-          // Pequeña pausa entre operaciones
-          await Future.delayed(const Duration(milliseconds: 1000));
-          
-          // 2. Subir archivo a Serenity API
-          print('   🔄 Subiendo archivo...');
-          setState(() {
-            _uploadStatus = 'Subiendo archivo ${i + 1}/${_selectedFiles.length}... (Esto puede tomar unos minutos para archivos grandes)';
-          });
           
           final uploadResponse = await _serenityApiService.uploadFile(file);
-          print('   ✅ Archivo subido - ID: ${uploadResponse.id}');
-          
-          // Pequeña pausa entre operaciones
-          await Future.delayed(const Duration(milliseconds: 1000));
-          
-          // 3. Ejecutar análisis con el chat ID y el ID del archivo
-          print('   🔄 Ejecutando análisis...');
-          setState(() {
-            _uploadStatus = 'Analizando archivo ${i + 1}/${_selectedFiles.length}... (Procesando con IA, puede tomar varios minutos)';
-          });
           
           final analysisResponse = await _serenityApiService.executeAnalysis(chatId, uploadResponse.id);
-          print('   ✅ Análisis completado - Instance ID: ${analysisResponse.instanceId}');
-          
-          // Pequeña pausa entre operaciones
-          await Future.delayed(const Duration(milliseconds: 1000));
-          
-          // 4. Guardar en la base de datos
-          print('   🔄 Guardando en base de datos...');
-          setState(() {
-            _uploadStatus = 'Guardando resultados ${i + 1}/${_selectedFiles.length}...';
-          });
-          
+
           await _casesService.createCaseFromModel(
             CaseModel(
               name: _productNameController.text.trim(),
@@ -151,12 +108,9 @@ class _NewArtState extends State<NewArt> {
               arteId: [uploadResponse.id], // Pasar como lista
             ),
           );
-          print('   ✅ Caso guardado exitosamente');
-          
-          print('✅ Archivo procesado completamente: ${file.name}');
           
         } catch (fileError) {
-          print('❌ Error procesando archivo ${file.name}: $fileError');
+          print('ERROR: no se pudo procesar el archivo ${file.name}: $fileError');
           
           // Mostrar error específico al usuario
           if (mounted) {
@@ -268,7 +222,7 @@ class _NewArtState extends State<NewArt> {
           children: [
             // Título
             const Text(
-              'Crear nuevo arte',
+              'Crear nuevo proyecto',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -402,7 +356,7 @@ class _NewArtState extends State<NewArt> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
-              'Sube tus archivos',
+              'Sube tu archivos',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -425,7 +379,7 @@ class _NewArtState extends State<NewArt> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Arrastra tus archivos aquí.',
+              'Arrastra tu archivo aquí.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],

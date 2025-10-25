@@ -312,20 +312,6 @@ class _HomeState extends State<Home> {
                 style: TextStyle(color: color, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(width: 8),
-            // Mostrar ID de Serenity si existe
-            if (caseModel.serenityId.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'ID: ${caseModel.serenityId}',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-              ),
           ],
         ),
         trailing: TextButton(
