@@ -7,7 +7,7 @@ import '../../database/user_service.dart';
 import '../../models/case_model.dart';
 import '../../models/user_model.dart';
 
-class Home extends StatefulWidget  {
+class Home extends StatefulWidget {
   const Home({super.key});
 
   @override
@@ -320,7 +320,11 @@ class _HomeState extends State<Home> {
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(12),
-                )
+                ),
+                child: Text(
+                  'ID: ${caseModel.serenityId}',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
               ),
           ],
         ),
