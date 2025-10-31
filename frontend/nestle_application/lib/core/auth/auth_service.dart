@@ -42,6 +42,12 @@ class AuthService {
     return userData?['rol']?.toString().toUpperCase() == 'ADMINISTRADOR';
   }
 
+  /// Verificamos si el usuario es supervisor
+  Future<bool> isCurrentUserSupervisor() async {
+    final userData = await getCurrentUserData();
+    return userData?['rol']?.toString().toUpperCase() == 'SUPERVISOR';
+  }
+
   /// Obtenemos el rol del usuario 
   Future<String?> getCurrentUserRole() async {
     final userData = await getCurrentUserData();

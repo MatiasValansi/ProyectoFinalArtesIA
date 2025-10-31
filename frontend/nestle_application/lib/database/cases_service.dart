@@ -41,6 +41,26 @@ class CasesService {
     }
   }
 
+  /// Obtener todos los casos con información del usuario para supervisores
+  Future<List<Map<String, dynamic>>> getAllCasesWithUserInfo() async {
+    try {
+      final response = await client
+          .from('cases')
+          .select('''
+            *,
+            user_id(
+              id,
+              email,
+              role
+            )
+          ''')
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      throw Exception('Error al obtener casos con información de usuario: $e');
+    }
+  }
+
   /// Obtener casos activos
   Future<List<Map<String, dynamic>>> getActiveCases() async {
     try {

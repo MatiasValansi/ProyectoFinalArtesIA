@@ -5,6 +5,8 @@ import 'package:nestle_application/presentation/screens/home.dart';
 import 'package:nestle_application/presentation/screens/new_art.dart';
 import 'package:nestle_application/presentation/screens/analysis_result.dart';
 import 'package:nestle_application/presentation/screens/admin_users.dart';
+import 'package:nestle_application/presentation/screens/supervisor_analysis_review.dart';
+import 'package:nestle_application/presentation/screens/supervisor_dashboard.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -37,6 +39,23 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/admin-users',
       builder: (context, state) => const AdminUsersScreen(),
+    ),
+    GoRoute(
+      path: '/supervisor-review/:projectName',
+      builder: (context, state) {
+        final projectName = state.pathParameters['projectName']!;
+        final serenityId = state.uri.queryParameters['serenityId'];
+        final caseId = state.uri.queryParameters['caseId'];
+        return SupervisorAnalysisReview(
+          projectName: projectName, 
+          serenityId: serenityId,
+          caseId: caseId
+        );
+      },
+    ),
+    GoRoute(
+      path: '/supervisor-dashboard',
+      builder: (context, state) => const SupervisorDashboard(),
     ),
 
 
