@@ -11,6 +11,11 @@ class CasesService {
     required String serenityId,
     required String userId,
     required List<String> arteId,
+    bool? approved,
+    int? totalImages,
+    Map<String, dynamic>? problems,
+    double? score,
+    String? recommendations,
   }) async {
     try {
       final response = await client.from('cases').insert({
@@ -20,6 +25,11 @@ class CasesService {
         'arte_id': arteId, // Ahora es una lista
         'active': true,
         'created_at': DateTime.now().toIso8601String(),
+        if (approved != null) 'approved': approved,
+        if (totalImages != null) 'total_images': totalImages,
+        if (problems != null) 'problems': problems,
+        if (score != null) 'score': score,
+        if (recommendations != null) 'recommendations': recommendations,
       }).select().single();
 
       return response;
@@ -168,6 +178,95 @@ class CasesService {
     }
   }
 
+  /// Actualizar estado de aprobación de un caso
+  Future<void> updateCaseApprovalStatus(String caseId, bool approved) async {
+    try {
+      await client
+          .from('cases')
+          .update({'approved': approved})
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al actualizar estado de aprobación del caso: $e');
+    }
+  }
+
+  /// Actualizar total de imágenes de un caso
+  Future<void> updateCaseTotalImages(String caseId, int totalImages) async {
+    try {
+      await client
+          .from('cases')
+          .update({'total_images': totalImages})
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al actualizar total de imágenes del caso: $e');
+    }
+  }
+
+  /// Actualizar problemas de un caso
+  Future<void> updateCaseProblems(String caseId, Map<String, dynamic> problems) async {
+    try {
+      await client
+          .from('cases')
+          .update({'problems': problems})
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al actualizar problemas del caso: $e');
+    }
+  }
+
+  /// Actualizar score de un caso
+  Future<void> updateCaseScore(String caseId, double score) async {
+    try {
+      await client
+          .from('cases')
+          .update({'score': score})
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al actualizar score del caso: $e');
+    }
+  }
+
+  /// Actualizar recomendaciones de un caso
+  Future<void> updateCaseRecommendations(String caseId, String recommendations) async {
+    try {
+      await client
+          .from('cases')
+          .update({'recommendations': recommendations})
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al actualizar recomendaciones del caso: $e');
+    }
+  }
+
+  /// Actualizar análisis completo de un caso (nuevos campos)
+  Future<void> updateCaseAnalysis({
+    required String caseId,
+    bool? approved,
+    int? totalImages,
+    Map<String, dynamic>? problems,
+    double? score,
+    String? recommendations,
+  }) async {
+    try {
+      final updateData = <String, dynamic>{};
+      
+      if (approved != null) updateData['approved'] = approved;
+      if (totalImages != null) updateData['total_images'] = totalImages;
+      if (problems != null) updateData['problems'] = problems;
+      if (score != null) updateData['score'] = score;
+      if (recommendations != null) updateData['recommendations'] = recommendations;
+
+      if (updateData.isNotEmpty) {
+        await client
+            .from('cases')
+            .update(updateData)
+            .eq('id', caseId);
+      }
+    } catch (e) {
+      throw Exception('Error al actualizar análisis del caso: $e');
+    }
+  }
+
   /// Eliminar un caso (soft delete - marcarlo como inactivo)
   Future<void> deactivateCase(String caseId) async {
     try {
@@ -208,6 +307,62 @@ class CasesService {
     }
   }
 
+  /// Obtener casos aprobados
+  Future<List<Map<String, dynamic>>> getApprovedCases() async {
+    try {
+      final response = await client
+          .from('cases')
+          .select()
+          .eq('approved', true)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      throw Exception('Error al obtener casos aprobados: $e');
+    }
+  }
+
+  /// Obtener casos pendientes de aprobación
+  Future<List<Map<String, dynamic>>> getPendingApprovalCases() async {
+    try {
+      final response = await client
+          .from('cases')
+          .select()
+          .or('approved.is.null,approved.eq.false')
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      throw Exception('Error al obtener casos pendientes de aprobación: $e');
+    }
+  }
+
+  /// Obtener casos con score mayor a un valor
+  Future<List<Map<String, dynamic>>> getCasesByMinScore(double minScore) async {
+    try {
+      final response = await client
+          .from('cases')
+          .select()
+          .gte('score', minScore)
+          .order('score', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      throw Exception('Error al obtener casos por score mínimo: $e');
+    }
+  }
+
+  /// Obtener casos con problemas específicos
+  Future<List<Map<String, dynamic>>> getCasesWithProblems() async {
+    try {
+      final response = await client
+          .from('cases')
+          .select()
+          .not('problems', 'is', null)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      throw Exception('Error al obtener casos con problemas: $e');
+    }
+  }
+
   /// Obtener estadísticas de casos
   Future<Map<String, dynamic>> getCasesStats() async {
     try {
@@ -228,10 +383,44 @@ class CasesService {
           .select()
           .eq('active', false);
 
+      // Obtener casos aprobados
+      final approvedCases = await client
+          .from('cases')
+          .select()
+          .eq('approved', true);
+
+      // Obtener casos pendientes de aprobación
+      final pendingCases = await client
+          .from('cases')
+          .select()
+          .or('approved.is.null,approved.eq.false');
+
+      // Obtener casos con problemas
+      final casesWithProblems = await client
+          .from('cases')
+          .select()
+          .not('problems', 'is', null);
+
+      // Calcular score promedio
+      final casesWithScore = await client
+          .from('cases')
+          .select('score')
+          .not('score', 'is', null);
+      
+      double averageScore = 0.0;
+      if (casesWithScore.isNotEmpty) {
+        final scores = casesWithScore.map((caseData) => (caseData['score'] as num).toDouble()).toList();
+        averageScore = scores.reduce((a, b) => a + b) / scores.length;
+      }
+
       return {
         'total': totalCases.length,
         'active': activeCases.length,
         'inactive': inactiveCases.length,
+        'approved': approvedCases.length,
+        'pending': pendingCases.length,
+        'withProblems': casesWithProblems.length,
+        'averageScore': averageScore,
       };
     } catch (e) {
       throw Exception('Error al obtener estadísticas de casos: $e');
@@ -322,6 +511,139 @@ class CasesService {
       return CaseModel.fromJson(response);
     } catch (e) {
       throw Exception('Error al actualizar caso desde modelo: $e');
+    }
+  }
+
+  /// Obtener casos aprobados como CaseModel
+  Future<List<CaseModel>> getApprovedCasesAsModels() async {
+    try {
+      final response = await client
+          .from('cases')
+          .select()
+          .eq('approved', true)
+          .order('created_at', ascending: false);
+      return response.map<CaseModel>((json) => CaseModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Error al obtener casos aprobados como modelos: $e');
+    }
+  }
+
+  /// Obtener casos pendientes de aprobación como CaseModel
+  Future<List<CaseModel>> getPendingApprovalCasesAsModels() async {
+    try {
+      final response = await client
+          .from('cases')
+          .select()
+          .or('approved.is.null,approved.eq.false')
+          .order('created_at', ascending: false);
+      return response.map<CaseModel>((json) => CaseModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Error al obtener casos pendientes como modelos: $e');
+    }
+  }
+
+  /// Obtener casos por score mínimo como CaseModel
+  Future<List<CaseModel>> getCasesByMinScoreAsModels(double minScore) async {
+    try {
+      final response = await client
+          .from('cases')
+          .select()
+          .gte('score', minScore)
+          .order('score', ascending: false);
+      return response.map<CaseModel>((json) => CaseModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Error al obtener casos por score como modelos: $e');
+    }
+  }
+
+  /// Obtener casos con problemas como CaseModel
+  Future<List<CaseModel>> getCasesWithProblemsAsModels() async {
+    try {
+      final response = await client
+          .from('cases')
+          .select()
+          .not('problems', 'is', null)
+          .order('created_at', ascending: false);
+      return response.map<CaseModel>((json) => CaseModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Error al obtener casos con problemas como modelos: $e');
+    }
+  }
+
+  // ========== MÉTODOS DE ANÁLISIS Y GESTIÓN AVANZADA ==========
+
+  /// Marcar un caso como completamente analizado
+  Future<CaseModel> markCaseAsAnalyzed({
+    required String caseId,
+    required bool approved,
+    required int totalImages,
+    Map<String, dynamic>? problems,
+    double? score,
+    String? recommendations,
+  }) async {
+    try {
+      await updateCaseAnalysis(
+        caseId: caseId,
+        approved: approved,
+        totalImages: totalImages,
+        problems: problems,
+        score: score,
+        recommendations: recommendations,
+      );
+      
+      final updatedCase = await getCaseByIdAsModel(caseId);
+      if (updatedCase == null) {
+        throw Exception('No se pudo obtener el caso actualizado');
+      }
+      
+      return updatedCase;
+    } catch (e) {
+      throw Exception('Error al marcar caso como analizado: $e');
+    }
+  }
+
+  /// Obtener resumen de análisis para un caso
+  Future<Map<String, dynamic>?> getCaseAnalysisSummary(String caseId) async {
+    try {
+      final response = await client
+          .from('cases')
+          .select('approved, total_images, problems, score, recommendations')
+          .eq('id', caseId)
+          .single();
+      
+      return {
+        'approved': response['approved'],
+        'totalImages': response['total_images'],
+        'problems': response['problems'],
+        'score': response['score'],
+        'recommendations': response['recommendations'],
+        'hasAnalysis': response['approved'] != null || 
+                       response['total_images'] != null ||
+                       response['problems'] != null ||
+                       response['score'] != null ||
+                       response['recommendations'] != null,
+      };
+    } catch (e) {
+      print('Error obteniendo resumen de análisis: $e');
+      return null;
+    }
+  }
+
+  /// Limpiar análisis de un caso (resetear campos de análisis)
+  Future<void> clearCaseAnalysis(String caseId) async {
+    try {
+      await client
+          .from('cases')
+          .update({
+            'approved': null,
+            'total_images': null,
+            'problems': null,
+            'score': null,
+            'recommendations': null,
+          })
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al limpiar análisis del caso: $e');
     }
   }
 }

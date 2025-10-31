@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:html' as html;
 import '../widgets/chat_component.dart';
 import '../../core/auth/auth_service.dart';
+import '../../database/cases_service.dart';
 
 
 class AnalysisResult extends StatefulWidget {
@@ -24,50 +25,59 @@ class _AnalysisResultState extends State<AnalysisResult> {
   bool _isLoading = true;
   Map<String, dynamic>? _analysisData;
   final AuthService _authService = AuthService();
+  final CasesService _casesService = CasesService();
 
   @override
   void initState() {
-    super.initState();
-    _loadAnalysisResults();
+  super.initState();
+  _loadAnalysisResultsFromDB();
   }
 
 
 
 
-  Future<void> _loadAnalysisResults() async {
-    // Simular carga de datos del análisis
-    await Future.delayed(const Duration(seconds: 2));
-    
-    setState(() {
-      _isLoading = false;
-      _analysisData = {
-        'projectName': widget.projectName,
-        'analysisDate': DateTime.now(),
-        'totalImages': 15,
-        'validImages': 12,
-        'invalidImages': 3,
-        'complianceScore': 85,
-        'issues': [
-          {
-            'type': 'Logo Position',
-            'severity': 'Medium',
-            'count': 2,
-            'description': 'Logo no está centrado correctamente'
-          },
-          {
-            'type': 'Color Compliance',
-            'severity': 'Low',
-            'count': 1,
-            'description': 'Variación menor en tonalidad del logo'
-          },
-        ],
-        'recommendations': [
-          'Revisar posicionamiento del logo en las imágenes señaladas',
-          'Verificar calibración de color en el proceso de impresión',
-          'Considerar establecer guías más claras para el posicionamiento'
-        ]
-      };
-    });
+  Future<void> _loadAnalysisResultsFromDB() async {
+    if (widget.serenityId == null) {
+      setState(() {
+        _isLoading = false;
+        _analysisData = null;
+      });
+      return;
+    }
+    try {
+      final cases = await _casesService.getCasesBySerenityId(widget.serenityId!);
+      if (cases.isNotEmpty) {
+        final caseData = cases.first;
+        setState(() {
+          _isLoading = false;
+          _analysisData = {
+            'projectName': caseData['name'],
+            'analysisDate': caseData['created_at'],
+            'totalImages': caseData['total_images'] ?? 0,
+            'validImages': (caseData['total_images'] ?? 0) - (caseData['problems']?['invalidImages'] ?? 0),
+            'invalidImages': caseData['problems']?['invalidImages'] ?? 0,
+            'complianceScore': caseData['score'] ?? 0,
+            'issues': caseData['problems']?['issues'] ?? [],
+            'recommendations': caseData['recommendations'] != null
+                ? (caseData['recommendations'] is List
+                    ? caseData['recommendations']
+                    : [caseData['recommendations']])
+                : [],
+          };
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _analysisData = null;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _analysisData = null;
+      });
+      print('Error cargando análisis: $e');
+    }
   }
 
   Future<void> _handleLogout() async {

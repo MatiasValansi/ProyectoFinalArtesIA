@@ -324,6 +324,19 @@ class _HomeState extends State<Home> {
                                   color: Colors.grey,
                                   fontWeight: FontWeight.w500,
                                 ),
+                              )
+                            : ListView.builder(
+                                itemCount: _userCases.length,
+                                itemBuilder: (context, index) {
+                                  final caseModel = _userCases[index];
+                                  return _projectRow(
+                                    caseModel.name,
+                                    (caseModel.approved ?? false) ? "Activo" : "Inactivo",
+                                    (caseModel.approved ?? false) ? Colors.green : Colors.red,
+                                    context,
+                                    caseModel,
+                                  );
+                                },
                               ),
                               SizedBox(height: 8),
                               Text(

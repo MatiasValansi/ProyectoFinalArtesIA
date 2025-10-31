@@ -1,10 +1,41 @@
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:html' as html;
+import 'dart:convert';
 import '../../core/auth/auth_service.dart';
 import '../../core/services/serenity_api_service.dart';
 import '../../database/cases_service.dart';
 import '../../models/case_model.dart';
+
+
+class AnalisisResultado {
+  final Map<String, dynamic> problemas;
+  final Map<String, dynamic> recomendaciones;
+  final int puntuacion;
+
+  AnalisisResultado({
+    required this.problemas,
+    required this.recomendaciones,
+    required this.puntuacion,
+  });
+}
+
+AnalisisResultado extraerAnalisis(String respuestaAgente) {
+  final Map<String, dynamic> data = json.decode(respuestaAgente);
+  final conclusion = data['actionResults']['conclusion'];
+  Map<String, dynamic> analisis;
+  if (conclusion['jsonContent'] != null) {
+    analisis = conclusion['jsonContent'];
+  } else {
+    analisis = json.decode(conclusion['content']);
+  }
+  return AnalisisResultado(
+    problemas: Map<String, dynamic>.from(analisis['problemas']),
+    recomendaciones: Map<String, dynamic>.from(analisis['recomendaciones']),
+    puntuacion: analisis['puntuacion'],
+  );
+}
 
 class NewArt extends StatefulWidget {
   const NewArt({super.key});
