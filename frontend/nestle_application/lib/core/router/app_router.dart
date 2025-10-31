@@ -13,17 +13,16 @@ final appRouter = GoRouter(
     final isLoggedIn = firebaseAuth.currentUser != null;
     final isGoingToLogin = state.matchedLocation == '/login';
 
-    // Si no está logueado y no va al login, redirigir a login
+    // redirigir al login si no esta logeado
     if (!isLoggedIn && !isGoingToLogin) {
       return '/login';
     }
 
-    // Si está logueado y va al login, redirigir a home
+    // redirigir al home si ya esta logeado
     if (isLoggedIn && isGoingToLogin) {
       return '/home';
     }
 
-    // No redirigir en otros casos
     return null;
   },
   routes: [

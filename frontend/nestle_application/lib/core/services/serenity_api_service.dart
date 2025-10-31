@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
+import '../config/app_config.dart';
 import 'package:http/http.dart' as http;
 
 class SerenityApiService {
-  static const String _baseUrl = 'https://api.serenitystar.ai';
-  static const String _apiKey = '10472b86-76cf-41d4-a27e-7fe76745d7db';
 
   /// Inicializar una nueva conversación
   Future<String> initializeChat() async {
@@ -14,11 +13,11 @@ class SerenityApiService {
     
     while (currentRetry < maxRetries) {
       try {
-        final uri = Uri.parse('$_baseUrl/api/v2/agent/NestleCheckAsistente/execute');
+  final uri = Uri.parse(AppConfig.iaApiBaseUrl + AppConfig.nestleCheckAgentEndpoint);
         
         final headers = {
           'Content-Type': 'application/json',
-          'X-API-KEY': _apiKey,
+          'X-API-KEY': AppConfig.iaApiKey,
         };
         
         final body = json.encode([
@@ -62,11 +61,11 @@ class SerenityApiService {
       try {
         // Usar html.HttpRequest como en chat_component
         final formData = html.FormData();
-        formData.appendBlob('file', file, file.name);
+  formData.appendBlob('formFile', file, file.name);
         
         final request = html.HttpRequest();
-        request.open('POST', '$_baseUrl/api/v2/VolatileKnowledge');
-        request.setRequestHeader('X-API-KEY', _apiKey);
+  request.open('POST', AppConfig.fileUploadUrl);
+  request.setRequestHeader('X-API-KEY', AppConfig.iaApiKey);
         
         // Crear completer para manejar la respuesta async
         final completer = Completer<FileUploadResponse>();
@@ -123,11 +122,11 @@ class SerenityApiService {
     
     while (currentRetry < maxRetries) {
       try {
-        final uri = Uri.parse('$_baseUrl/api/v2/agent/NestleCheckAsistente/execute');
+  final uri = Uri.parse(AppConfig.iaApiBaseUrl + AppConfig.nestleCheckAgentEndpoint);
         
         final headers = {
           'Content-Type': 'application/json',
-          'X-API-KEY': _apiKey,
+          'X-API-KEY': AppConfig.iaApiKey,
         };
         
         final body = json.encode([

@@ -2,31 +2,32 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../database/user_service.dart';
 
 class AuthService {
-  static final AuthService _instance = AuthService._internal();
-  factory AuthService() => _instance;
+  static final AuthService instancia = AuthService._internal();
+  factory AuthService() => instancia;
   AuthService._internal();
 
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final UserService _userService = UserService();
-  
-  Map<String, dynamic>? _currentUserData;
+  final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
+  final UserService userService = UserService();
 
-  /// Obtiene los datos del usuario actual desde Supabase
+  /// Guardamos el usuario actual en caché
+  Map<String, dynamic>? currentUserData;
+
+  /// Obtenemos los datos del usuario actual desde Supabase
   Future<Map<String, dynamic>?> getCurrentUserData() async {
-    if (_currentUserData != null) {
-      return _currentUserData;
+    if (currentUserData != null) {
+      return currentUserData;
     }
 
-    final firebaseUser = _firebaseAuth.currentUser;
+    final firebaseUser = firebaseAuth.currentUser;
     if (firebaseUser == null) return null;
 
     try {
-      // Buscar usuario en Supabase por auth_uid
-      final userData = await _userService.getUserByAuthUid(firebaseUser.uid);
+      // Buscamos el usuario en Supabase por auth_uid
+      final userData = await userService.getUserByAuthUid(firebaseUser.uid);
 
       if (userData != null) {
-        _currentUserData = userData;
-        return _currentUserData;
+        currentUserData = userData;
+        return currentUserData;
       }
     } catch (e) {
       print('Error obteniendo datos del usuario: $e');
@@ -35,38 +36,38 @@ class AuthService {
     return null;
   }
 
-  /// Verifica si el usuario actual es administrador
+  /// Verificamos si el usuario es administrador
   Future<bool> isCurrentUserAdmin() async {
     final userData = await getCurrentUserData();
     return userData?['rol']?.toString().toUpperCase() == 'ADMINISTRADOR';
   }
 
-  /// Obtiene el rol del usuario actual
+  /// Obtenemos el rol del usuario 
   Future<String?> getCurrentUserRole() async {
     final userData = await getCurrentUserData();
     return userData?['rol']?.toString();
   }
 
-  /// Obtiene el email del usuario actual
+  /// Obtenemos el email del usuario 
   Future<String?> getCurrentUserEmail() async {
     final userData = await getCurrentUserData();
     return userData?['email']?.toString();
   }
 
-  /// Limpia la caché de datos del usuario (útil al hacer logout)
+  /// Limpia la caché de datos del usuario
   void clearUserData() {
-    _currentUserData = null;
+    currentUserData = null;
   }
 
-  /// Inicia sesión con email y password
+  /// Iniciar sesión
   Future<bool> signInWithEmailAndPassword(String email, String password) async {
     try {
-      await _firebaseAuth.signInWithEmailAndPassword(
+      await firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
       
-      // Clear cache to force refresh of user data
+      // Borramos caché de datos del usuario
       clearUserData();
       return true;
     } catch (e) {
@@ -75,14 +76,13 @@ class AuthService {
     }
   }
 
-  /// Cierra sesión
+  /// Cerrar sesión
   Future<void> signOut() async {
     try {
       clearUserData();
-      await _firebaseAuth.signOut();
+      await firebaseAuth.signOut();
     } catch (e) {
       print('Error al cerrar sesión: $e');
-      // Aún así limpiamos los datos locales
       clearUserData();
     }
   }

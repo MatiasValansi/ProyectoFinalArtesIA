@@ -453,13 +453,13 @@ class _ChatComponentState extends State<ChatComponent> {
 
     try {
       // Crear FormData para multipart/form-data
-      final formData = html.FormData();
-      formData.appendBlob('file', _selectedImage!, _selectedImage!.name);
+  final formData = html.FormData();
+  formData.appendBlob('formFile', _selectedImage!, _selectedImage!.name);
 
-      // Configurar la request
-      final request = html.HttpRequest();
-      request.open('POST', AppConfig.volatileKnowledgeUrl);
-      request.setRequestHeader('X-API-KEY', AppConfig.iaApiKey);
+  // Configurar la request
+  final request = html.HttpRequest();
+  request.open('POST', AppConfig.fileUploadUrl);
+  request.setRequestHeader('X-API-KEY', AppConfig.iaApiKey);
       
       // Escuchar la respuesta
       request.onLoadEnd.listen((e) {
