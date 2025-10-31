@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:html' as html;
 import '../../core/config/app_config.dart';
+import '../../database/cases_service.dart';
 
 class ChatComponent extends StatefulWidget {
   final String projectName;
@@ -21,6 +22,7 @@ class ChatComponent extends StatefulWidget {
 }
 
 class _ChatComponentState extends State<ChatComponent> {
+  final CasesService _casesService = CasesService();
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   List<Map<String, dynamic>> _chatMessages = [];
@@ -615,11 +617,33 @@ class _ChatComponentState extends State<ChatComponent> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
+
+        // Guardar en la base si viene actionResults.conclusion
+        if (data['actionResults'] != null && data['actionResults']['conclusion'] != null) {
+          final conclusion = data['actionResults']['conclusion'];
+          Map<String, dynamic> analisis;
+          if (conclusion['jsonContent'] != null) {
+            analisis = conclusion['jsonContent'];
+          } else {
+            analisis = jsonDecode(conclusion['content']);
+          }
+          // Guardar problemas, recomendaciones y puntuacion en el caso
+          if (widget.caseSerenityId != null) {
+            final cases = await _casesService.getCasesBySerenityId(widget.caseSerenityId!);
+            if (cases.isNotEmpty) {
+              final caseId = cases.first['id'].toString();
+              await _casesService.client.from('cases').update({
+                'problems': analisis['problemas'],
+                'recommendations': analisis['recomendaciones'],
+                'score': analisis['puntuacion'],
+              }).eq('id', caseId);
+            }
+          }
+        }
+
         setState(() {
           // Remover mensaje de carga
           _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
-          
           // Agregar respuesta de la IA
           _chatMessages.add({
             'isUser': false,
@@ -627,7 +651,6 @@ class _ChatComponentState extends State<ChatComponent> {
             'timestamp': DateTime.now(),
             'isLoading': false,
           });
-          
           _isChatSending = false;
         });
       } else {
