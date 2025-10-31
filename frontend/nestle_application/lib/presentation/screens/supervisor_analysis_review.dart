@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_service.dart';
+import '../../database/cases_service.dart';
 
 class SupervisorAnalysisReview extends StatefulWidget {
   final String projectName;
@@ -36,49 +37,23 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
     // Simular carga de datos del análisis
     await Future.delayed(const Duration(seconds: 1));
     
+    if (widget.caseId == null) {
+      setState(() {
+        _isLoading = false;
+        _analysisData = null;
+      });
+      return;
+    }
+    final caseData = await CasesService().getCaseById(widget.caseId!);
     setState(() {
       _isLoading = false;
-      _analysisData = {
-        'projectName': widget.projectName,
-        'caseId': widget.caseId,
-        'serenityId': widget.serenityId,
-        'userName': 'Juan Pérez',
-        'userEmail': 'juan.perez@empresa.com',
-        'submissionDate': DateTime.now().subtract(const Duration(hours: 2)),
-        'aiValidationScore': 88,
-        'aiRecommendations': [
-          'El logo está correctamente posicionado en la mayoría de las imágenes',
-          'Los colores cumplen con las especificaciones de la marca',
-          'Se detectaron algunas inconsistencias menores en el espaciado'
-        ],
-        'detectedProblems': [
-          {
-            'type': 'Espaciado del logo',
-            'severity': 'Medio',
-            'description': 'El logo no mantiene el espaciado mínimo requerido en 2 de las 15 imágenes',
-            'affectedImages': ['imagen_03.jpg', 'imagen_11.jpg'],
-          },
-          {
-            'type': 'Calidad de imagen',
-            'severity': 'Bajo',
-            'description': 'Una imagen presenta resolución ligeramente por debajo del estándar',
-            'affectedImages': ['imagen_07.jpg'],
-          },
-        ],
-        'lastUploadedImage': {
-          'url': 'https://via.placeholder.com/400x300/004B93/FFFFFF?text=Última+Imagen+Subida',
-          'name': 'arte_final_v2.jpg',
-          'uploadDate': DateTime.now().subtract(const Duration(minutes: 30)),
-          'size': '2.1 MB',
-        },
-        'totalImages': 15,
-        'validImages': 12,
-        'issuesFound': 3,
-        'status': 'pending_review',
-      };
-      
-      // Establecer la imagen por defecto
-      _selectedImageUrl = _analysisData!['lastUploadedImage']['url'];
+      _analysisData = caseData;
+      // Si hay imagen subida, seleccionarla
+      if (_analysisData != null && _analysisData!['lastUploadedImage'] != null) {
+        _selectedImageUrl = _analysisData!['lastUploadedImage']['url'];
+      } else {
+        _selectedImageUrl = null;
+      }
     });
   }
 
@@ -266,7 +241,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'Proyecto: ${widget.projectName}',
+                  'Proyecto: ${_analysisData!['name']}',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -281,21 +256,21 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
                 Expanded(
                   child: _buildInfoItem(
                     'Usuario:',
-                    _analysisData!['userName'],
+                    _analysisData!['user_name'],
                     Icons.person,
                   ),
                 ),
                 Expanded(
                   child: _buildInfoItem(
                     'Email:',
-                    _analysisData!['userEmail'],
+                    _analysisData!['user_email']?.toString() ?? '',
                     Icons.email,
                   ),
                 ),
                 Expanded(
                   child: _buildInfoItem(
                     'Enviado:',
-                    _formatDate(_analysisData!['submissionDate']),
+                    _formatDate(_analysisData!['created_at']),
                     Icons.schedule,
                   ),
                 ),
@@ -342,7 +317,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
         Expanded(
           child: _buildSummaryCard(
             'Imágenes Totales',
-            _analysisData!['totalImages'].toString(),
+            _analysisData!['total_images'].toString(),
             Icons.image,
             Colors.blue,
           ),
@@ -351,7 +326,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
         Expanded(
           child: _buildSummaryCard(
             'Válidas',
-            _analysisData!['validImages'].toString(),
+            _analysisData!['valid_images'].toString(),
             Icons.check_circle,
             Colors.green,
           ),
@@ -360,7 +335,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
         Expanded(
           child: _buildSummaryCard(
             'Problemas',
-            _analysisData!['issuesFound'].toString(),
+            _analysisData!['issues_found'].toString(),
             Icons.warning,
             Colors.orange,
           ),
@@ -369,9 +344,9 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
         Expanded(
           child: _buildSummaryCard(
             'Puntuación IA',
-            '${_analysisData!['aiValidationScore']}%',
+            '${_analysisData!['score']}%',
             Icons.psychology,
-            _analysisData!['aiValidationScore'] >= 80 ? Colors.green : Colors.red,
+            (_analysisData!['score'] ?? 0) >= 80 ? Colors.green : Colors.red,
           ),
         ),
       ],
@@ -506,7 +481,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   Widget _buildProblemsSection() {
-    final problems = _analysisData!['detectedProblems'] as List;
+  final problems = (_analysisData!['problems']?['issues'] ?? []) as List;
     
     return Card(
       elevation: 2,
@@ -638,7 +613,10 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   Widget _buildRecommendationsSection() {
-    final recommendations = _analysisData!['aiRecommendations'] as List;
+  final recommendations = (_analysisData!['recommendations'] is List)
+    ? _analysisData!['recommendations'] as List
+    : (_analysisData!['recommendations'] != null
+      ? [_analysisData!['recommendations']] : []);
     
     return Card(
       elevation: 2,

@@ -6,7 +6,6 @@ import 'package:nestle_application/presentation/screens/new_art.dart';
 import 'package:nestle_application/presentation/screens/analysis_result.dart';
 import 'package:nestle_application/presentation/screens/admin_users.dart';
 import 'package:nestle_application/presentation/screens/supervisor_analysis_review.dart';
-import 'package:nestle_application/presentation/screens/supervisor_dashboard.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -52,10 +51,6 @@ final appRouter = GoRouter(
           caseId: caseId
         );
       },
-    ),
-    GoRoute(
-      path: '/supervisor-dashboard',
-      builder: (context, state) => const SupervisorDashboard(),
     ),
 
 

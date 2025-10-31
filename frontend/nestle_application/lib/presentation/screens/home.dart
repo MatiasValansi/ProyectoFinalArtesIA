@@ -307,7 +307,7 @@ class _HomeState extends State<Home> {
                 const SizedBox(height: 16),
                 Expanded(
                   child: _userCases.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -324,19 +324,6 @@ class _HomeState extends State<Home> {
                                   color: Colors.grey,
                                   fontWeight: FontWeight.w500,
                                 ),
-                              )
-                            : ListView.builder(
-                                itemCount: _userCases.length,
-                                itemBuilder: (context, index) {
-                                  final caseModel = _userCases[index];
-                                  return _projectRow(
-                                    caseModel.name,
-                                    (caseModel.approved ?? false) ? "Activo" : "Inactivo",
-                                    (caseModel.approved ?? false) ? Colors.green : Colors.red,
-                                    context,
-                                    caseModel,
-                                  );
-                                },
                               ),
                               SizedBox(height: 8),
                               Text(
@@ -355,8 +342,8 @@ class _HomeState extends State<Home> {
                             final caseModel = _userCases[index];
                             return _projectRow(
                               caseModel.name,
-                              caseModel.active ? "Activo" : "Inactivo",
-                              caseModel.active ? Colors.green : Colors.red,
+                              (caseModel.approved ?? false) ? "Aprobado" : "desaprobado",
+                              (caseModel.approved ?? false) ? Colors.green : Colors.red,
                               context,
                               caseModel,
                             );
@@ -701,10 +688,14 @@ class _HomeState extends State<Home> {
   }
 
   Widget _buildProjectCard(Map<String, dynamic> caseData) {
-    final caseName = caseData['name']?.toString() ?? 'Proyecto sin nombre';
-    final userName =
-        caseData['user_id']?['email']?.toString() ?? 'Usuario desconocido';
-    final userEmail = caseData['user_id']?['email']?.toString() ?? '';
+  final caseName = caseData['name']?.toString() ?? 'Proyecto sin nombre';
+  final userInfo = caseData['user_id'];
+  final userName = userInfo is Map && userInfo['name'] != null
+    ? userInfo['name'].toString()
+    : 'Usuario desconocido';
+  final userEmail = userInfo is Map && userInfo['email'] != null
+    ? userInfo['email'].toString()
+    : '';
     final isActive = caseData['active'] ?? true;
     final createdAt =
         DateTime.tryParse(caseData['created_at']?.toString() ?? '') ??
