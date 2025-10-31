@@ -104,22 +104,6 @@ class _HomeState extends State<Home> {
     }
   }
 
-  Future<void> _refreshCases() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
-    
-    await _loadUserCases();
-    
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   Future<void> _handleLogout() async {
     try {
       await _authService.signOut();
@@ -275,8 +259,8 @@ class _HomeState extends State<Home> {
                                   final caseModel = _userCases[index];
                                   return _projectRow(
                                     caseModel.name,
-                                    caseModel.active ? "Activo" : "Inactivo",
-                                    caseModel.active ? Colors.green : Colors.red,
+                                    (caseModel.approved ?? false) ? "Activo" : "Inactivo",
+                                    (caseModel.approved ?? false) ? Colors.green : Colors.red,
                                     context,
                                     caseModel,
                                   );
