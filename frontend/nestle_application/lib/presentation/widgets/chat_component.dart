@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:html' as html;
 import '../../core/config/app_config.dart';
+import '../../core/services/serenity_api_service.dart';
 import '../../database/cases_service.dart';
 
 class ChatComponent extends StatefulWidget {
@@ -31,6 +32,8 @@ class _ChatComponentState extends State<ChatComponent> {
   String? _selectedImageBase64;
   String? _volatileKnowledgeId;
   bool _isUploadingFile = false;
+  String _imageStatus = '';
+  String? _imagePreviewUrl;
 
   @override
   void initState() {
@@ -141,75 +144,114 @@ class _ChatComponentState extends State<ChatComponent> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.grey[300]!),
                     ),
-                    child: Row(
+                    child: Column(
                       children: [
-                        if (_isUploadingFile)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF004B93),
+                        // Preview de la imagen
+                        if (_imagePreviewUrl != null) ...[
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            height: 80,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                _imagePreviewUrl!,
+                                fit: BoxFit.cover,
                               ),
                             ),
-                          )
-                        else if (_volatileKnowledgeId != null)
-                          const Icon(
-                            Icons.check_circle,
-                            color: Colors.green,
-                            size: 20,
-                          )
-                        else
-                          Icon(
-                            Icons.attach_file,
-                            color: Colors.grey[600],
-                            size: 20,
                           ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _selectedImage!.name,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[700],
+                        ],
+                        // Info de la imagen
+                        Row(
+                          children: [
+                            if (_isUploadingFile)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF004B93),
+                                  ),
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              )
+                            else if (_volatileKnowledgeId != null)
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 20,
+                              )
+                            else if (_selectedImage != null && _volatileKnowledgeId == null)
+                              Icon(
+                                Icons.pending,
+                                color: Colors.orange[600],
+                                size: 20,
+                              )
+                            else
+                              Icon(
+                                Icons.attach_file,
+                                color: Colors.grey[600],
+                                size: 20,
                               ),
-                              if (_isUploadingFile)
-                                Text(
-                                  'Subiendo archivo...',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[500],
-                                    fontStyle: FontStyle.italic,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _selectedImage!.name,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[700],
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                )
-                              else if (_volatileKnowledgeId != null)
-                                Text(
-                                  'Archivo listo para analizar',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.green[600],
-                                    fontStyle: FontStyle.italic,
-                                  ),
+                                  if (_isUploadingFile)
+                                    Text(
+                                      _imageStatus.isEmpty ? 'Subiendo archivo...' : _imageStatus,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[500],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    )
+                                  else if (_volatileKnowledgeId != null)
+                                    Text(
+                                      'Archivo listo para analizar',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green[600],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      'Toque para subir archivo',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (!_isUploadingFile)
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 18),
+                                onPressed: _removeSelectedImage,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
                                 ),
-                            ],
-                          ),
+                              ),
+                          ],
                         ),
-                        if (!_isUploadingFile)
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 18),
-                            onPressed: _removeSelectedImage,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -238,7 +280,7 @@ class _ChatComponentState extends State<ChatComponent> {
                         textInputAction: TextInputAction.send,
                         decoration: InputDecoration(
                           hintText: _isUploadingFile
-                                  ? 'Subiendo archivo...'
+                                  ? 'Procesando imagen...'
                                   : 'Pregunta sobre el análisis...',
                           hintStyle: TextStyle(color: Colors.grey[500]),
                           border: OutlineInputBorder(
@@ -449,70 +491,68 @@ class _ChatComponentState extends State<ChatComponent> {
   Future<void> _uploadFileToVolatileKnowledge() async {
     if (_selectedImage == null) return;
     
+    print('=== INICIANDO UPLOAD ===');
+    print('Archivo: ${_selectedImage!.name}, Tamaño: ${_selectedImage!.size} bytes');
+    
     setState(() {
       _isUploadingFile = true;
+      _imageStatus = 'Iniciando...';
     });
 
     try {
-      // Crear FormData para multipart/form-data
-  final formData = html.FormData();
-  formData.appendBlob('formFile', _selectedImage!, _selectedImage!.name);
-
-  // Configurar la request
-  final request = html.HttpRequest();
-  request.open('POST', AppConfig.fileUploadUrl);
-  request.setRequestHeader('X-API-KEY', AppConfig.iaApiKey);
+      final serenityService = SerenityApiService();
       
-      // Escuchar la respuesta
-      request.onLoadEnd.listen((e) {
-        if (request.status == 200) {
-          final responseData = jsonDecode(request.responseText!);
-          setState(() {
-            _volatileKnowledgeId = responseData['id'];
-            _isUploadingFile = false;
-          });
-        } else {
-          setState(() {
-            _isUploadingFile = false;
-          });
-          print('Error al subir archivo: ${request.status} - ${request.responseText}');
-          // Mostrar error al usuario
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error al subir el archivo. Intenta nuevamente.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      // Crear preview URL para la imagen
+      final reader = html.FileReader();
+      reader.readAsDataUrl(_selectedImage!);
+      await reader.onLoad.first;
+      
+      setState(() {
+        _imagePreviewUrl = reader.result as String?;
       });
-
-      request.onError.listen((e) {
-        setState(() {
-          _isUploadingFile = false;
-        });
-        print('Error de red al subir archivo: $e');
+      
+      print('Preview creado correctamente');
+      
+      // Subir imagen como volatile knowledge
+      print('Iniciando upload a volatile knowledge...');
+      _volatileKnowledgeId = await serenityService.uploadImageToVolatileKnowledge(
+        _selectedImage!,
+        onStatusUpdate: (status) {
+          print('Status update: $status');
+          // Actualizar el estado mostrado al usuario
+          if (mounted) {
+            setState(() {
+              _imageStatus = status;
+            });
+          }
+        },
+      );
+      
+      print('Upload completado. ID: $_volatileKnowledgeId');
+      
+      setState(() {
+        _isUploadingFile = false;
+        _imageStatus = 'Imagen lista para análisis';
+      });
+      
+    } catch (e) {
+      print('=== ERROR EN UPLOAD ===');
+      print('Error: $e');
+      print('Tipo de error: ${e.runtimeType}');
+      
+      setState(() {
+        _isUploadingFile = false;
+        _imageStatus = 'Error al subir imagen';
+      });
+      
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error de conexión al subir el archivo.'),
+          SnackBar(
+            content: Text('Error al subir imagen: $e'),
             backgroundColor: Colors.red,
           ),
         );
-      });
-
-      // Enviar la request
-      request.send(formData);
-      
-    } catch (e) {
-      setState(() {
-        _isUploadingFile = false;
-      });
-      print('Error al subir archivo: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al subir el archivo.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      }
     }
   }
 
@@ -521,6 +561,8 @@ class _ChatComponentState extends State<ChatComponent> {
       _selectedImage = null;
       _selectedImageBase64 = null;
       _volatileKnowledgeId = null;
+      _imageStatus = '';
+      _imagePreviewUrl = null;
     });
   }
 
@@ -609,38 +651,21 @@ class _ChatComponentState extends State<ChatComponent> {
         ]
       ];
       
+      print('Enviando request a agente:');
+      print('URL: ${AppConfig.nestleCheckAgentUrl}');
+      print('Body: ${jsonEncode(requestBody)}');
+      print('Volatile Knowledge ID: $_volatileKnowledgeId');
+      
       final response = await http.post(
         Uri.parse(AppConfig.nestleCheckAgentUrl),
         headers: AppConfig.apiHeaders,
         body: jsonEncode(requestBody),
-      );
+      ).timeout(const Duration(seconds: 120)); // Timeout de 2 minutos para análisis
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Guardar en la base si viene actionResults.conclusion
-        if (data['actionResults'] != null && data['actionResults']['conclusion'] != null) {
-          final conclusion = data['actionResults']['conclusion'];
-          Map<String, dynamic> analisis;
-          if (conclusion['jsonContent'] != null) {
-            analisis = conclusion['jsonContent'];
-          } else {
-            analisis = jsonDecode(conclusion['content']);
-          }
-          // Guardar problemas, recomendaciones y puntuacion en el caso
-          if (widget.caseSerenityId != null) {
-            final cases = await _casesService.getCasesBySerenityId(widget.caseSerenityId!);
-            if (cases.isNotEmpty) {
-              final caseId = cases.first['id'].toString();
-              await _casesService.client.from('cases').update({
-                'problems': analisis['problemas'],
-                'recommendations': analisis['recomendaciones'],
-                'score': analisis['puntuacion'],
-              }).eq('id', caseId);
-            }
-          }
-        }
-
+        // Primero mostrar la respuesta al usuario
         setState(() {
           // Remover mensaje de carga
           _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
@@ -653,17 +678,31 @@ class _ChatComponentState extends State<ChatComponent> {
           });
           _isChatSending = false;
         });
+
+        // Luego intentar guardar en la base de datos (sin bloquear el chat)
+        _saveAnalysisResults(data);
       } else {
         print('Error HTTP mensaje ${response.statusCode}: ${response.body}');
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
+      print('Error en _sendMessageToAgent: $e');
+      String errorMessage = 'Error de conexión: No se pudo enviar el mensaje.';
+      
+      if (e.toString().contains('TimeoutException') || e.toString().contains('timeout')) {
+        errorMessage = 'La solicitud tardó mucho tiempo. El análisis de imágenes puede tomar varios minutos. Intenta nuevamente.';
+      } else if (e.toString().contains('SocketException') || e.toString().contains('Network')) {
+        errorMessage = 'Error de red: Verifica tu conexión a internet e intenta nuevamente.';
+      } else if (e.toString().contains('FormatException')) {
+        errorMessage = 'Error en la respuesta del servidor. Intenta nuevamente.';
+      }
+      
       setState(() {
         // Remover mensaje de carga y mostrar error
         _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
         _chatMessages.add({
           'isUser': false,
-          'message': 'Error de conexión: No se pudo enviar el mensaje. Verifica tu conexión a internet e intenta nuevamente.',
+          'message': errorMessage,
           'timestamp': DateTime.now(),
           'isLoading': false,
         });
@@ -675,6 +714,62 @@ class _ChatComponentState extends State<ChatComponent> {
   }
 
 
+
+  /// Guardar resultados del análisis en la base de datos (método asíncrono separado)
+  Future<void> _saveAnalysisResults(Map<String, dynamic> data) async {
+    try {
+      // Verificar si hay conclusión en la respuesta
+      if (data['actionResults'] == null || data['actionResults']['conclusion'] == null) {
+        print('No hay conclusión en la respuesta para guardar');
+        return;
+      }
+
+      final conclusion = data['actionResults']['conclusion'];
+      Map<String, dynamic> analisis;
+      
+      if (conclusion['jsonContent'] != null) {
+        analisis = conclusion['jsonContent'];
+      } else {
+        analisis = jsonDecode(conclusion['content']);
+      }
+      
+      // Verificar que tenemos serenity_id del caso
+      if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
+        print('No hay serenity_id del caso para guardar análisis');
+        return;
+      }
+      
+      print('Intentando guardar análisis para serenity_id: ${widget.caseSerenityId}');
+      
+      // Obtener casos por serenity_id
+      final cases = await _casesService.getCasesBySerenityId(widget.caseSerenityId!);
+      
+      if (cases.isEmpty) {
+        print('No se encontraron casos con serenity_id: ${widget.caseSerenityId}');
+        return;
+      }
+      
+      if (cases.length > 1) {
+        print('ADVERTENCIA: Se encontraron ${cases.length} casos con el mismo serenity_id');
+      }
+      
+      final caseId = cases.first['id'];
+      print('Guardando análisis en caso ID: $caseId');
+      
+      // Actualizar el caso con los resultados del análisis
+      await _casesService.client.from('cases').update({
+        'problems': analisis['problemas'],
+        'recommendations': analisis['recomendaciones'],
+        'score': analisis['puntuacion'],
+      }).eq('id', caseId);
+      
+      print('Análisis guardado correctamente en el caso');
+      
+    } catch (e) {
+      print('Error al guardar análisis en base de datos: $e');
+      // No mostrar error al usuario ya que el chat funcionó correctamente
+    }
+  }
 
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {

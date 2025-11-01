@@ -8,7 +8,7 @@ class AppConfig {
     static String get iaApiKey => dotenv.env['IA_API_KEY'] ?? '';
 
     static String get nestleCheckAgentEndpoint => dotenv.env['IA_NESTLE_CHECK_AGENT_ENDPOINT'] ?? '';
-    static String get volatileKnowledgeEndpoint => dotenv.env['IA_VOLATILE_KNOWLEDGE_ENDPOINT'] ?? '';
+    static String get volatileKnowledgeEndpoint => dotenv.env['IA_VOLATILE_KNOWLEDGE_ENDPOINT'] ?? '/api/v2/VolatileKnowledge';
 
   static String get nestleCheckAgentUrl => iaApiBaseUrl + nestleCheckAgentEndpoint;
   static String get volatileKnowledgeUrl => iaApiBaseUrl + volatileKnowledgeEndpoint;

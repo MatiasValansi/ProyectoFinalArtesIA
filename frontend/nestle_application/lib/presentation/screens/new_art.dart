@@ -62,14 +62,14 @@ class _NewArtState extends State<NewArt> {
 
   void _handleFileSelection() {
     final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-    uploadInput.multiple = true;
-    uploadInput.accept = '.jpg,.jpeg,.png,.pdf';
+    uploadInput.multiple = false; // Solo un archivo
+    uploadInput.accept = '.jpg,.jpeg,.png';
     
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
-      if (files != null) {
+      if (files != null && files.isNotEmpty) {
         setState(() {
-          _selectedFiles = files;
+          _selectedFiles = [files[0]]; // Solo tomar el primer archivo
         });
       }
     });
@@ -120,65 +120,79 @@ class _NewArtState extends State<NewArt> {
         throw Exception('ID de usuario no válido');
       }
 
-      // Procesar cada archivo seleccionado secuencialmente
-      for (int i = 0; i < _selectedFiles.length; i++) {
-        final file = _selectedFiles[i];
-        
-        try {    
-          final chatId = await _serenityApiService.initializeChat();
-          
-          final uploadResponse = await _serenityApiService.uploadFile(file);
-          
-          final analysisResponse = await _serenityApiService.executeAnalysis(chatId, uploadResponse.id);
-
-          await _casesService.createCaseFromModel(
-            CaseModel(
-              name: _productNameController.text.trim(),
-              serenityId: analysisResponse.instanceId,
-              userId: userId,
-              arteId: [uploadResponse.id], // Pasar como lista
-            ),
-          );
-          
-        } catch (fileError) {
-          print('ERROR: no se pudo procesar el archivo ${file.name}: $fileError');
-          
-          // Mostrar error específico al usuario
-          if (mounted) {
-            String errorMessage = 'Error procesando ${file.name}';
-            
-            if (fileError.toString().contains('timeout') || fileError.toString().contains('Request timeout')) {
-              errorMessage = 'Timeout procesando ${file.name}. El archivo puede ser muy grande o la conexión lenta. Intenta con un archivo más pequeño.';
-            } else if (fileError.toString().contains('Network error')) {
-              errorMessage = 'Error de conexión procesando ${file.name}. Verifica tu conexión a internet.';
-            } else {
-              errorMessage = 'Error procesando ${file.name}: ${fileError.toString()}';
-            }
-            
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(errorMessage),
-                backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 6),
-              ),
-            );
-          }
-          
-          // Continuamos con el siguiente archivo en caso de error
-          continue;
-        }
-      }
+      // Procesar la imagen seleccionada
+      final file = _selectedFiles.first;
       
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Archivos enviados para análisis exitosamente'),
-            backgroundColor: Colors.green,
+      try {
+        setState(() {
+          _uploadStatus = 'Procesando imagen: ${file.name}';
+        });
+        
+        final chatId = await _serenityApiService.initializeChat();
+        
+        // Subir imagen como volatile knowledge
+        final volatileKnowledgeId = await _serenityApiService.uploadImageToVolatileKnowledge(
+          file,
+          onStatusUpdate: (status) {
+            if (mounted) {
+              setState(() {
+                _uploadStatus = status;
+              });
+            }
+          },
+        );
+          
+        // Una vez que el volatile knowledge esté listo, ejecutar el análisis
+        setState(() {
+          _uploadStatus = 'Ejecutando análisis...';
+        });
+        
+        final analysisResponse = await _serenityApiService.executeAnalysis(chatId, volatileKnowledgeId);
+
+        await _casesService.createCaseFromModel(
+          CaseModel(
+            name: _productNameController.text.trim(),
+            serenityId: analysisResponse.instanceId,
+            userId: userId,
+            arteId: [volatileKnowledgeId], // Usar el ID del volatile knowledge
           ),
         );
         
-        // Navegar de vuelta al home
-        context.go('/home');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Imagen enviada para análisis exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          // Navegar de vuelta al home
+          context.go('/home');
+        }
+        
+      } catch (fileError) {
+        print('ERROR: no se pudo procesar la imagen ${file.name}: $fileError');
+        
+        // Mostrar error específico al usuario
+        if (mounted) {
+          String errorMessage = 'Error procesando ${file.name}';
+          
+          if (fileError.toString().contains('timeout') || fileError.toString().contains('Request timeout')) {
+            errorMessage = 'Timeout procesando ${file.name}. El archivo puede ser muy grande o la conexión lenta. Intenta con un archivo más pequeño.';
+          } else if (fileError.toString().contains('Network error')) {
+            errorMessage = 'Error de conexión procesando ${file.name}. Verifica tu conexión a internet.';
+          } else {
+            errorMessage = 'Error procesando ${file.name}: ${fileError.toString()}';
+          }
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 6),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -434,6 +448,20 @@ class _NewArtState extends State<NewArt> {
   }
 
   Widget _buildFileList() {
+    if (_selectedFiles.isEmpty) {
+      return const Center(
+        child: Text(
+          'No hay archivos seleccionados',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey,
+          ),
+        ),
+      );
+    }
+
+    final file = _selectedFiles.first;
+    
     return Column(
       children: [
         Padding(
@@ -442,7 +470,7 @@ class _NewArtState extends State<NewArt> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Archivos seleccionados (${_selectedFiles.length})',
+                'Imagen seleccionada',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -451,7 +479,7 @@ class _NewArtState extends State<NewArt> {
               TextButton(
                 onPressed: _handleFileSelection,
                 child: const Text(
-                  'Agregar más',
+                  'Cambiar',
                   style: TextStyle(color: Color(0xFF004B93)),
                 ),
               ),
@@ -459,46 +487,104 @@ class _NewArtState extends State<NewArt> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _selectedFiles.length,
-            itemBuilder: (context, index) {
-              final file = _selectedFiles[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: Icon(
-                    _getFileIcon(file.name),
-                    color: const Color(0xFF004B93),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+                color: Colors.grey[50],
+              ),
+              child: Column(
+                children: [
+                  // Preview de la imagen
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: FutureBuilder<String>(
+                          future: _getImagePreview(file),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              return Image.network(
+                                snapshot.data!,
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                              );
+                            } else {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ),
                   ),
-                  title: Text(file.name),
-                  subtitle: Text(_formatFileSize(file.size)),
-                  trailing: IconButton(
-                    onPressed: () => _removeFile(index),
-                    icon: const Icon(Icons.close, color: Colors.red),
+                  // Info del archivo
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.image,
+                          color: const Color(0xFF004B93),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                file.name,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                _formatFileSize(file.size),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => _removeFile(0),
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          tooltip: 'Eliminar imagen',
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                ],
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  IconData _getFileIcon(String fileName) {
-    final extension = fileName.split('.').last.toLowerCase();
-    switch (extension) {
-      case 'pdf':
-        return Icons.picture_as_pdf;
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-        return Icons.image;
-      default:
-        return Icons.insert_drive_file;
-    }
+  Future<String> _getImagePreview(html.File file) async {
+    final reader = html.FileReader();
+    reader.readAsDataUrl(file);
+    await reader.onLoad.first;
+    return reader.result as String;
   }
+
+
 
   String _formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';

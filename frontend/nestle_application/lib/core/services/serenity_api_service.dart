@@ -52,48 +52,86 @@ class SerenityApiService {
     throw Exception('Error inesperado al inicializar chat');
   }
 
-  /// Subir un archivo a la API de Serenity usando la misma lógica que chat_component
-  Future<FileUploadResponse> uploadFile(html.File file) async {
+  /// Subir imagen como volatile knowledge y obtener ID inmediatamente
+  Future<String> uploadImageToVolatileKnowledge(
+    html.File file,
+    {Function(String)? onStatusUpdate}
+  ) async {
     int maxRetries = 3;
     int currentRetry = 0;
     
     while (currentRetry < maxRetries) {
       try {
-        // Usar html.HttpRequest como en chat_component
+        print('=== UPLOAD ATTEMPT ${currentRetry + 1} ===');
+        print('URL: ${AppConfig.volatileKnowledgeUrl}');
+        print('File: ${file.name}, Size: ${file.size} bytes');
+        
+        onStatusUpdate?.call('Subiendo imagen...');
+        
         final formData = html.FormData();
-  formData.appendBlob('formFile', file, file.name);
+        
+        // Usar callback placeholder
+        final uniqueId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+        final placeholderCallback = 'https://placeholder.callback.url/$uniqueId';
+        formData.append('CallbackUrl', placeholderCallback);
+        
+        print('Callback URL: $placeholderCallback');
+        
+        // Solo enviar el archivo
+        formData.appendBlob('File', file, file.name);
         
         final request = html.HttpRequest();
-  request.open('POST', AppConfig.fileUploadUrl);
-  request.setRequestHeader('X-API-KEY', AppConfig.iaApiKey);
+        request.open('POST', AppConfig.volatileKnowledgeUrl);
+        request.setRequestHeader('X-API-KEY', AppConfig.iaApiKey);
+        
+        print('Headers configurados, enviando request...');
         
         // Crear completer para manejar la respuesta async
-        final completer = Completer<FileUploadResponse>();
+        final completer = Completer<String>();
         
         request.onLoadEnd.listen((e) {
+          print('=== UPLOAD RESPONSE ===');
+          print('Status: ${request.status}');
+          print('Response: ${request.responseText}');
+          
           if (request.status == 200 && request.responseText != null) {
             try {
               final responseData = json.decode(request.responseText!);
-              final uploadResponse = FileUploadResponse.fromJson(responseData);
-              completer.complete(uploadResponse);
+              final volatileKnowledgeId = responseData['id'] ?? '';
+              
+              print('Parsed ID: $volatileKnowledgeId');
+              
+              if (volatileKnowledgeId.isEmpty) {
+                completer.completeError('No se recibió ID del volatile knowledge');
+                return;
+              }
+              
+              onStatusUpdate?.call('Imagen subida correctamente');
+              completer.complete(volatileKnowledgeId);
+              
             } catch (e) {
+              print('Error parsing response: $e');
               completer.completeError('Error parsing response: $e');
             }
           } else {
+            print('HTTP Error - Status: ${request.status}, Response: ${request.responseText}');
             completer.completeError('HTTP ${request.status}: ${request.responseText}');
           }
         });
         
         request.onError.listen((e) {
+          print('=== NETWORK ERROR ===');
+          print('Error: $e');
           completer.completeError('Network error: $e');
         });
         
         request.onTimeout.listen((e) {
+          print('=== REQUEST TIMEOUT ===');
           completer.completeError('Request timeout');
         });
         
-        // Configurar timeout más largo para archivos grandes
-        request.timeout = 300000; // 5 minutos para archivos grandes
+        // Configurar timeout
+        request.timeout = 60000; // 1 minuto para upload
         
         // Enviar la request
         request.send(formData);
@@ -102,17 +140,21 @@ class SerenityApiService {
         return await completer.future;
         
       } catch (e) {
+        print('=== UPLOAD RETRY ===');
+        print('Retry $currentRetry/$maxRetries - Error: $e');
+        
         currentRetry++;
         if (currentRetry >= maxRetries) {
-          throw Exception('Error al subir archivo después de $maxRetries intentos: $e');
+          throw Exception('Error al subir imagen después de $maxRetries intentos: $e');
         }
         
         // Esperar antes del siguiente intento
+        print('Esperando ${currentRetry * 2} segundos antes del siguiente intento...');
         await Future.delayed(Duration(seconds: currentRetry * 2));
       }
     }
     
-    throw Exception('Error inesperado al subir archivo');
+    throw Exception('Error inesperado al subir imagen');
   }
 
   /// Ejecutar análisis usando el agente de Nestlé con chatId
@@ -283,3 +325,4 @@ class ExecutorTaskLog {
     };
   }
 }
+
