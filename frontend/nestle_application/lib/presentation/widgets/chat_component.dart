@@ -10,12 +10,14 @@ class ChatComponent extends StatefulWidget {
   final String projectName;
   final Map<String, dynamic>? analysisData;
   final String? caseSerenityId;
+  final VoidCallback? onAnalysisUpdated; // Callback para notificar cambios
 
   const ChatComponent({
     super.key,
     required this.projectName,
     this.analysisData,
     this.caseSerenityId,
+    this.onAnalysisUpdated, // Añadir el callback
   });
 
   @override
@@ -885,6 +887,11 @@ class _ChatComponentState extends State<ChatComponent> {
       // Actualizar el caso solo si hay datos para actualizar
       if (updateData.isNotEmpty) {
         await _casesService.client.from('cases').update(updateData).eq('id', caseId);
+        
+        // Notificar al componente padre que los datos han sido actualizados
+        if (widget.onAnalysisUpdated != null) {
+          widget.onAnalysisUpdated!();
+        }
       }
       
     } catch (e) {

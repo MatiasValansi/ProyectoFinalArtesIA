@@ -175,6 +175,12 @@ class _AnalysisResultState extends State<AnalysisResult> {
     }
   }
 
+  /// Callback que se ejecuta cuando el chat actualiza el análisis
+  void _onAnalysisUpdated() {
+    // Recargar los datos de la base de datos para reflejar los cambios
+    _loadAnalysisResultsFromDB();
+  }
+
   Future<void> _handleLogout() async {
     try {
       await _authService.signOut();
@@ -313,6 +319,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                     projectName: widget.projectName,
                     analysisData: _analysisData,
                     caseSerenityId: widget.serenityId,
+                    onAnalysisUpdated: _onAnalysisUpdated, // Añadir el callback
                   ),
                 ),
               ],
