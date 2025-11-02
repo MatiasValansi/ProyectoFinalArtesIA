@@ -7,9 +7,9 @@ class CaseModel {
   final DateTime? createdAt;
   final bool? approved;
   final int? totalImages;
-  final Map<String, dynamic>? problems;
+  final dynamic problems; // Cambiado para soportar tanto Map como List
   final double? score;
-  final String? recommendations;
+  final dynamic recommendations; // Cambiado para soportar tanto String como List
 
   CaseModel({
     this.id,
@@ -36,6 +36,8 @@ class CaseModel {
         arteIdList = [json['arte_id']];
       }
     }
+
+
     
     return CaseModel(
       id: json['id']?.toString(),
@@ -48,9 +50,9 @@ class CaseModel {
           : null,
       approved: json['approved'],
       totalImages: json['total_images']?.toInt(),
-      problems: json['problems'] as Map<String, dynamic>?,
+      problems: json['problems'], // Ahora puede ser Map o List
       score: json['score']?.toDouble(),
-      recommendations: json['recommendations'],
+      recommendations: json['recommendations'], // Ahora puede ser String o List
     );
   }
 
@@ -64,7 +66,6 @@ class CaseModel {
       'arte_id': arteId, // Ya es una lista, se serializa correctamente
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (approved != null) 'approved': approved,
-      if (totalImages != null) 'total_images': totalImages,
       if (problems != null) 'problems': problems,
       if (score != null) 'score': score,
       if (recommendations != null) 'recommendations': recommendations,
@@ -119,9 +120,9 @@ class CaseModel {
       other.createdAt == createdAt &&
       other.approved == approved &&
       other.totalImages == totalImages &&
-      _mapEquals(other.problems, problems) &&
+      _dynamicEquals(other.problems, problems) &&
       other.score == score &&
-      other.recommendations == recommendations;
+      _dynamicEquals(other.recommendations, recommendations);
   }
 
   /// Helper method to compare lists
@@ -134,16 +135,18 @@ class CaseModel {
     return true;
   }
 
-  /// Helper method to compare maps
-  bool _mapEquals<K, V>(Map<K, V>? a, Map<K, V>? b) {
+  /// Helper method to compare dynamic values (can be Map, List, String, etc.)
+  bool _dynamicEquals(dynamic a, dynamic b) {
     if (a == null) return b == null;
-    if (b == null || a.length != b.length) return false;
-    for (final K key in a.keys) {
-      if (!b.containsKey(key) || b[key] != a[key]) {
-        return false;
-      }
+    if (b == null) return false;
+    
+    // Si ambos son del mismo tipo, usar comparación directa
+    if (a.runtimeType == b.runtimeType) {
+      return a.toString() == b.toString();
     }
-    return true;
+    
+    // Para tipos diferentes, comparar como string
+    return a.toString() == b.toString();
   }
 
   @override
@@ -158,6 +161,6 @@ class CaseModel {
       totalImages.hashCode ^
       (problems?.hashCode ?? 0) ^
       score.hashCode ^
-      recommendations.hashCode;
+      (recommendations?.hashCode ?? 0);
   }
 }

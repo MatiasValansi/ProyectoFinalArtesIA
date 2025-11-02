@@ -221,11 +221,11 @@ class _ChatComponentState extends State<ChatComponent> {
                                     )
                                   else if (_volatileKnowledgeId != null)
                                     Text(
-                                      'Archivo listo para analizar',
+                                      '✓ Guardado y listo para análisis',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Colors.green[600],
-                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     )
                                   else
@@ -491,9 +491,6 @@ class _ChatComponentState extends State<ChatComponent> {
   Future<void> _uploadFileToVolatileKnowledge() async {
     if (_selectedImage == null) return;
     
-    print('=== INICIANDO UPLOAD ===');
-    print('Archivo: ${_selectedImage!.name}, Tamaño: ${_selectedImage!.size} bytes');
-    
     setState(() {
       _isUploadingFile = true;
       _imageStatus = 'Iniciando...';
@@ -511,14 +508,10 @@ class _ChatComponentState extends State<ChatComponent> {
         _imagePreviewUrl = reader.result as String?;
       });
       
-      print('Preview creado correctamente');
-      
       // Subir imagen como volatile knowledge
-      print('Iniciando upload a volatile knowledge...');
       _volatileKnowledgeId = await serenityService.uploadImageToVolatileKnowledge(
         _selectedImage!,
         onStatusUpdate: (status) {
-          print('Status update: $status');
           // Actualizar el estado mostrado al usuario
           if (mounted) {
             setState(() {
@@ -528,18 +521,17 @@ class _ChatComponentState extends State<ChatComponent> {
         },
       );
       
-      print('Upload completado. ID: $_volatileKnowledgeId');
+      // Guardar inmediatamente el ID en la base de datos
+      if (_volatileKnowledgeId != null) {
+        await _addImageToDatabase(_volatileKnowledgeId!);
+      }
       
       setState(() {
         _isUploadingFile = false;
-        _imageStatus = 'Imagen lista para análisis';
+        _imageStatus = 'Imagen guardada y lista para análisis';
       });
       
     } catch (e) {
-      print('=== ERROR EN UPLOAD ===');
-      print('Error: $e');
-      print('Tipo de error: ${e.runtimeType}');
-      
       setState(() {
         _isUploadingFile = false;
         _imageStatus = 'Error al subir imagen';
@@ -556,7 +548,76 @@ class _ChatComponentState extends State<ChatComponent> {
     }
   }
 
-  void _removeSelectedImage() {
+  /// Agregar imagen a la base de datos inmediatamente después del upload
+  Future<void> _addImageToDatabase(String volatileKnowledgeId) async {
+    try {
+      // Verificar que tenemos serenity_id del caso
+      if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
+        return;
+      }
+      
+      // Obtener casos por serenity_id
+      final cases = await _casesService.getCasesBySerenityId(widget.caseSerenityId!);
+      
+      if (cases.isEmpty) {
+        return;
+      }
+      
+      final caseId = cases.first['id'];
+      final currentArteId = cases.first['arte_id'] as List<dynamic>? ?? [];
+      
+      // Solo agregar si no está ya en el array (evitar duplicados)
+      if (!currentArteId.contains(volatileKnowledgeId)) {
+        final newArteId = List<String>.from(currentArteId)..add(volatileKnowledgeId);
+        
+        await _casesService.client.from('cases').update({
+          'arte_id': newArteId,
+        }).eq('id', caseId);
+      }
+      
+    } catch (e) {
+      // Error silencioso para mejor UX
+    }
+  }
+
+  /// Remover imagen de la base de datos cuando se elimina del chat
+  Future<void> _removeImageFromDatabase(String volatileKnowledgeId) async {
+    try {
+      // Verificar que tenemos serenity_id del caso
+      if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
+        return;
+      }
+      
+      // Obtener casos por serenity_id
+      final cases = await _casesService.getCasesBySerenityId(widget.caseSerenityId!);
+      
+      if (cases.isEmpty) {
+        return;
+      }
+      
+      final caseId = cases.first['id'];
+      final currentArteId = cases.first['arte_id'] as List<dynamic>? ?? [];
+      
+      // Remover el ID del array si existe
+      if (currentArteId.contains(volatileKnowledgeId)) {
+        final newArteId = List<String>.from(currentArteId)..remove(volatileKnowledgeId);
+        
+        await _casesService.client.from('cases').update({
+          'arte_id': newArteId,
+        }).eq('id', caseId);
+      }
+      
+    } catch (e) {
+      // Error silencioso para mejor UX
+    }
+  }
+
+  void _removeSelectedImage() async {
+    // Si hay un volatile knowledge ID, removerlo de la base de datos primero
+    if (_volatileKnowledgeId != null) {
+      await _removeImageFromDatabase(_volatileKnowledgeId!);
+    }
+    
     setState(() {
       _selectedImage = null;
       _selectedImageBase64 = null;
@@ -609,14 +670,24 @@ class _ChatComponentState extends State<ChatComponent> {
     _chatController.clear();
     _scrollToBottom();
     
-    _sendMessageToAgent(messageText);
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _removeSelectedImage();
-    });
+    // Guardar el volatile knowledge ID antes de limpiar la UI
+    final volatileKnowledgeIdToSend = _volatileKnowledgeId;
+    
+    // Limpiar la imagen inmediatamente de la UI (mejor UX)
+    if (_volatileKnowledgeId != null || _selectedImage != null) {
+      setState(() {
+        _volatileKnowledgeId = null;
+        _selectedImage = null;
+        _selectedImageBase64 = null;
+        _imageStatus = '';
+        _imagePreviewUrl = null;
+      });
+    }
+    
+    _sendMessageToAgent(messageText, volatileKnowledgeIdToSend);
   }
 
-  Future<void> _sendMessageToAgent(String message) async {
+  Future<void> _sendMessageToAgent(String message, String? volatileKnowledgeIdToSend) async {
     try {
       // Si no hay serenity_id del case, mostrar error
       if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
@@ -643,18 +714,13 @@ class _ChatComponentState extends State<ChatComponent> {
           'key': 'message',
           'value': message,
         },
-        if (_volatileKnowledgeId != null) ...[
+        if (volatileKnowledgeIdToSend != null) ...[
           {
             'key': 'volatileKnowledgeIds',
-            'value': [_volatileKnowledgeId!],
+            'value': [volatileKnowledgeIdToSend],
           }
         ]
       ];
-      
-      print('Enviando request a agente:');
-      print('URL: ${AppConfig.nestleCheckAgentUrl}');
-      print('Body: ${jsonEncode(requestBody)}');
-      print('Volatile Knowledge ID: $_volatileKnowledgeId');
       
       final response = await http.post(
         Uri.parse(AppConfig.nestleCheckAgentUrl),
@@ -678,15 +744,13 @@ class _ChatComponentState extends State<ChatComponent> {
           });
           _isChatSending = false;
         });
-
-        // Luego intentar guardar en la base de datos (sin bloquear el chat)
-        _saveAnalysisResults(data);
+        
+        // Guardar solo los resultados del análisis (problemas, recomendaciones, score)
+        await _saveAnalysisResults(data);
       } else {
-        print('Error HTTP mensaje ${response.statusCode}: ${response.body}');
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en _sendMessageToAgent: $e');
       String errorMessage = 'Error de conexión: No se pudo enviar el mensaje.';
       
       if (e.toString().contains('TimeoutException') || e.toString().contains('timeout')) {
@@ -719,55 +783,112 @@ class _ChatComponentState extends State<ChatComponent> {
   Future<void> _saveAnalysisResults(Map<String, dynamic> data) async {
     try {
       // Verificar si hay conclusión en la respuesta
-      if (data['actionResults'] == null || data['actionResults']['conclusion'] == null) {
-        print('No hay conclusión en la respuesta para guardar');
+      bool hasAnalysis = data['actionResults'] != null && data['actionResults']['conclusion'] != null;
+      
+      if (!hasAnalysis) {
         return;
       }
 
-      final conclusion = data['actionResults']['conclusion'];
-      Map<String, dynamic> analisis;
+      Map<String, dynamic>? analisis;
       
-      if (conclusion['jsonContent'] != null) {
-        analisis = conclusion['jsonContent'];
-      } else {
-        analisis = jsonDecode(conclusion['content']);
+      if (hasAnalysis) {
+        final conclusion = data['actionResults']['conclusion'];
+        
+        if (conclusion['jsonContent'] != null) {
+          analisis = conclusion['jsonContent'];
+        } else {
+          // Intentar parsear desde content si no hay jsonContent
+          try {
+            analisis = jsonDecode(conclusion['content']);
+          } catch (e) {
+            analisis = null; // No hay análisis válido
+          }
+        }
       }
       
       // Verificar que tenemos serenity_id del caso
       if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
-        print('No hay serenity_id del caso para guardar análisis');
         return;
       }
-      
-      print('Intentando guardar análisis para serenity_id: ${widget.caseSerenityId}');
       
       // Obtener casos por serenity_id
       final cases = await _casesService.getCasesBySerenityId(widget.caseSerenityId!);
       
       if (cases.isEmpty) {
-        print('No se encontraron casos con serenity_id: ${widget.caseSerenityId}');
         return;
       }
       
-      if (cases.length > 1) {
-        print('ADVERTENCIA: Se encontraron ${cases.length} casos con el mismo serenity_id');
+      final caseId = cases.first['id'];
+      
+      // Preparar los datos para actualizar
+      final updateData = <String, dynamic>{};
+      
+      // Solo procesar análisis si existe
+      if (analisis != null) {
+        // Guardar problemas (convertir de objeto a array de problemas)
+        if (analisis['problemas'] != null) {
+          final problemsMap = analisis['problemas'] as Map<String, dynamic>;
+          final problemsList = <Map<String, dynamic>>[];
+          
+          problemsMap.forEach((key, value) {
+            if (value is Map<String, dynamic> && value.containsKey('titulo') && value.containsKey('detalle')) {
+              problemsList.add({
+                'id': key,
+                'titulo': value['titulo'],
+                'detalle': value['detalle'],
+                'severity': 'Medium', // Valor por defecto
+              });
+            }
+          });
+          
+          updateData['problems'] = problemsList;
+        }
+        
+        // Guardar recomendaciones (convertir a array de strings simples)
+        if (analisis['recomendaciones'] != null) {
+          final recommendationsList = <String>[];
+          
+          if (analisis['recomendaciones'] is Map) {
+            // Convertir las recomendaciones de objeto a array de strings
+            final recomendaciones = analisis['recomendaciones'] as Map<String, dynamic>;
+            recomendaciones.values.forEach((value) {
+              recommendationsList.add(value.toString());
+            });
+          } else if (analisis['recomendaciones'] is List) {
+            // Si ya es una lista, extraer solo el texto
+            final recomendaciones = analisis['recomendaciones'] as List;
+            for (final recommendation in recomendaciones) {
+              recommendationsList.add(recommendation.toString());
+            }
+          } else if (analisis['recomendaciones'] is String) {
+            // Si es un string, agregarlo directamente
+            recommendationsList.add(analisis['recomendaciones'].toString());
+          }
+          
+          updateData['recommendations'] = recommendationsList;
+        }
+        
+        // Guardar score (como número)
+        if (analisis['puntuacion'] != null) {
+          double? score;
+          if (analisis['puntuacion'] is num) {
+            score = analisis['puntuacion'].toDouble();
+          } else if (analisis['puntuacion'] is String) {
+            score = double.tryParse(analisis['puntuacion']);
+          }
+          if (score != null) {
+            updateData['score'] = score;
+          }
+        }
       }
       
-      final caseId = cases.first['id'];
-      print('Guardando análisis en caso ID: $caseId');
-      
-      // Actualizar el caso con los resultados del análisis
-      await _casesService.client.from('cases').update({
-        'problems': analisis['problemas'],
-        'recommendations': analisis['recomendaciones'],
-        'score': analisis['puntuacion'],
-      }).eq('id', caseId);
-      
-      print('Análisis guardado correctamente en el caso');
+      // Actualizar el caso solo si hay datos para actualizar
+      if (updateData.isNotEmpty) {
+        await _casesService.client.from('cases').update(updateData).eq('id', caseId);
+      }
       
     } catch (e) {
-      print('Error al guardar análisis en base de datos: $e');
-      // No mostrar error al usuario ya que el chat funcionó correctamente
+      // Error silencioso para mejor UX
     }
   }
 

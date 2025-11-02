@@ -12,7 +12,6 @@ class CasesService {
     required String userId,
     required List<String> arteId,
     bool? approved,
-    int? totalImages,
     Map<String, dynamic>? problems,
     double? score,
     String? recommendations,
@@ -26,7 +25,6 @@ class CasesService {
         'active': true,
         'created_at': DateTime.now().toIso8601String(),
         if (approved != null) 'approved': approved,
-        if (totalImages != null) 'total_images': totalImages,
         if (problems != null) 'problems': problems,
         if (score != null) 'score': score,
         if (recommendations != null) 'recommendations': recommendations,
@@ -190,17 +188,6 @@ class CasesService {
     }
   }
 
-  /// Actualizar total de imágenes de un caso
-  Future<void> updateCaseTotalImages(String caseId, int totalImages) async {
-    try {
-      await client
-          .from('cases')
-          .update({'total_images': totalImages})
-          .eq('id', caseId);
-    } catch (e) {
-      throw Exception('Error al actualizar total de imágenes del caso: $e');
-    }
-  }
 
   /// Actualizar problemas de un caso
   Future<void> updateCaseProblems(String caseId, Map<String, dynamic> problems) async {
@@ -242,7 +229,7 @@ class CasesService {
   Future<void> updateCaseAnalysis({
     required String caseId,
     bool? approved,
-    int? totalImages,
+
     Map<String, dynamic>? problems,
     double? score,
     String? recommendations,
@@ -251,7 +238,7 @@ class CasesService {
       final updateData = <String, dynamic>{};
       
       if (approved != null) updateData['approved'] = approved;
-      if (totalImages != null) updateData['total_images'] = totalImages;
+      // Eliminamos total_images - se calcula desde arte_id
       if (problems != null) updateData['problems'] = problems;
       if (score != null) updateData['score'] = score;
       if (recommendations != null) updateData['recommendations'] = recommendations;
@@ -576,7 +563,6 @@ class CasesService {
   Future<CaseModel> markCaseAsAnalyzed({
     required String caseId,
     required bool approved,
-    required int totalImages,
     Map<String, dynamic>? problems,
     double? score,
     String? recommendations,
@@ -585,7 +571,6 @@ class CasesService {
       await updateCaseAnalysis(
         caseId: caseId,
         approved: approved,
-        totalImages: totalImages,
         problems: problems,
         score: score,
         recommendations: recommendations,
@@ -607,18 +592,20 @@ class CasesService {
     try {
       final response = await client
           .from('cases')
-          .select('approved, total_images, problems, score, recommendations')
+          .select('approved, arte_id, problems, score, recommendations')
           .eq('id', caseId)
           .single();
       
+      final arteIdArray = response['arte_id'] as List<dynamic>? ?? [];
+  
       return {
         'approved': response['approved'],
-        'totalImages': response['total_images'],
+        'totalImages': arteIdArray.length,
         'problems': response['problems'],
         'score': response['score'],
         'recommendations': response['recommendations'],
         'hasAnalysis': response['approved'] != null || 
-                       response['total_images'] != null ||
+                       arteIdArray.isNotEmpty ||
                        response['problems'] != null ||
                        response['score'] != null ||
                        response['recommendations'] != null,
@@ -636,7 +623,6 @@ class CasesService {
           .from('cases')
           .update({
             'approved': null,
-            'total_images': null,
             'problems': null,
             'score': null,
             'recommendations': null,

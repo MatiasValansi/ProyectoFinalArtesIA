@@ -149,14 +149,24 @@ class _NewArtState extends State<NewArt> {
         
         final analysisResponse = await _serenityApiService.executeAnalysis(chatId, volatileKnowledgeId);
 
-        await _casesService.createCaseFromModel(
+        // Crear el caso primero
+        final createdCase = await _casesService.createCaseFromModel(
           CaseModel(
             name: _productNameController.text.trim(),
             serenityId: analysisResponse.instanceId,
             userId: userId,
-            arteId: [volatileKnowledgeId], // Usar el ID del volatile knowledge
+            arteId: [volatileKnowledgeId]
           ),
         );
+
+        // Ahora necesitamos obtener la respuesta completa del análisis para extraer los resultados
+        // Nota: analysisResponse solo contiene información básica, necesitamos la respuesta completa del agente
+        setState(() {
+          _uploadStatus = 'Guardando resultados del análisis...';
+        });
+
+        // Extraer y guardar los resultados del análisis si están disponibles
+        await _extractAndSaveAnalysisResults(analysisResponse, createdCase.id!);
         
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -211,6 +221,116 @@ class _NewArtState extends State<NewArt> {
         });
       }
     }
+  }
+
+  /// Extraer y guardar los resultados del análisis
+  Future<void> _extractAndSaveAnalysisResults(dynamic analysisResponse, String caseId) async {
+    try {
+      print('=== EXTRAYENDO RESULTADOS DEL ANÁLISIS EN NEW_ART ===');
+      
+      // Verificar si hay actionResults en la respuesta
+      if (analysisResponse.actionResults == null || 
+          analysisResponse.actionResults['conclusion'] == null) {
+        print('❌ No hay conclusión en la respuesta del análisis');
+        return;
+      }
+
+      final conclusion = analysisResponse.actionResults['conclusion'];
+      Map<String, dynamic> analisis;
+      
+      if (conclusion['jsonContent'] != null) {
+        analisis = conclusion['jsonContent'];
+        print('✅ Usando jsonContent para extraer análisis');
+      } else {
+        // Intentar parsear desde content si no hay jsonContent
+        try {
+          analisis = jsonDecode(conclusion['content']);
+          print('✅ Parseado análisis desde content');
+        } catch (e) {
+          print('❌ Error al parsear JSON desde content: $e');
+          return;
+        }
+      }
+
+      print('Análisis extraído: $analisis');
+
+      // Preparar los datos para actualizar
+      final updateData = <String, dynamic>{};
+      
+      // Guardar problemas (convertir de objeto a array de problemas)
+      if (analisis['problemas'] != null) {
+        final problemsMap = analisis['problemas'] as Map<String, dynamic>;
+        final problemsList = <Map<String, dynamic>>[];
+        
+        problemsMap.forEach((key, value) {
+          if (value is Map<String, dynamic> && value.containsKey('titulo') && value.containsKey('detalle')) {
+            problemsList.add({
+              'id': key,
+              'titulo': value['titulo'],
+              'detalle': value['detalle'],
+              'severity': 'Medium', // Valor por defecto
+            });
+          }
+        });
+        
+        updateData['problems'] = problemsList;
+        print('✅ Problemas procesados: ${problemsList.length} encontrados');
+      }
+      
+      // Guardar recomendaciones (convertir a array de strings simples)
+      if (analisis['recomendaciones'] != null) {
+        final recommendationsList = <String>[];
+        
+        if (analisis['recomendaciones'] is Map) {
+          // Convertir las recomendaciones de objeto a array de strings
+          final recomendaciones = analisis['recomendaciones'] as Map<String, dynamic>;
+          recomendaciones.values.forEach((value) {
+            recommendationsList.add(value.toString());
+          });
+        } else if (analisis['recomendaciones'] is List) {
+          // Si ya es una lista, extraer solo el texto
+          final recomendaciones = analisis['recomendaciones'] as List;
+          for (final recommendation in recomendaciones) {
+            recommendationsList.add(recommendation.toString());
+          }
+        } else if (analisis['recomendaciones'] is String) {
+          // Si es un string, agregarlo directamente
+          recommendationsList.add(analisis['recomendaciones'].toString());
+        }
+        
+        updateData['recommendations'] = recommendationsList;
+        print('✅ Recomendaciones procesadas como array de strings: ${recommendationsList.length} encontradas');
+      }
+      
+      // Guardar score (como número)
+      if (analisis['puntuacion'] != null) {
+        double? score;
+        if (analisis['puntuacion'] is num) {
+          score = analisis['puntuacion'].toDouble();
+        } else if (analisis['puntuacion'] is String) {
+          score = double.tryParse(analisis['puntuacion']);
+        }
+        if (score != null) {
+          updateData['score'] = score;
+          print('✅ Score procesado: $score');
+        }
+      }
+      
+      // Actualizar el caso solo si hay datos para actualizar
+      if (updateData.isNotEmpty) {
+        print('💾 Actualizando caso $caseId con resultados del análisis...');
+        
+        await _casesService.client.from('cases').update(updateData).eq('id', caseId);
+        
+        print('✅ Resultados del análisis guardados correctamente en el caso');
+      } else {
+        print('❌ No hay datos válidos para guardar del análisis');
+      }
+      
+    } catch (e) {
+      print('❌ ERROR al extraer y guardar resultados del análisis: $e');
+    }
+    print('=== FIN DE EXTRACCIÓN DE RESULTADOS EN NEW_ART ===');
   }
 
   Future<void> _handleLogout() async {

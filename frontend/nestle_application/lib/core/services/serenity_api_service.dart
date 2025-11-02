@@ -255,6 +255,7 @@ class AnalysisResponse {
   final int timeToFirstToken;
   final String instanceId;
   final List<ExecutorTaskLog> executorTaskLogs;
+  final Map<String, dynamic>? actionResults; // Nueva propiedad para capturar actionResults
 
   AnalysisResponse({
     required this.content,
@@ -264,6 +265,7 @@ class AnalysisResponse {
     required this.timeToFirstToken,
     required this.instanceId,
     required this.executorTaskLogs,
+    this.actionResults, // Nueva propiedad
   });
 
   factory AnalysisResponse.fromJson(Map<String, dynamic> json) {
@@ -277,6 +279,7 @@ class AnalysisResponse {
       executorTaskLogs: (json['executorTaskLogs'] as List<dynamic>?)
           ?.map((log) => ExecutorTaskLog.fromJson(log))
           .toList() ?? [],
+      actionResults: json['actionResults'] as Map<String, dynamic>?, // Capturar actionResults
     );
   }
 
@@ -289,6 +292,7 @@ class AnalysisResponse {
       'timeToFirstToken': timeToFirstToken,
       'instanceId': instanceId,
       'executorTaskLogs': executorTaskLogs.map((log) => log.toJson()).toList(),
+      'actionResults': actionResults, // Incluir actionResults
     };
   }
 }

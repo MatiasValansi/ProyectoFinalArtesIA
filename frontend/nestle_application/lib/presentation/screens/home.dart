@@ -151,22 +151,6 @@ class _HomeState extends State<Home> {
     }
   }
 
-  Future<void> _refreshCases() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    if (_isSupervisor) {
-      await _loadAllCasesForSupervisor();
-    } else {
-      await _loadUserCases();
-    }
-
-    setState(() {
-      _isLoading = false;
-    });
-  }
-
   Future<void> _handleLogout() async {
     try {
       await _authService.signOut();
@@ -225,12 +209,6 @@ class _HomeState extends State<Home> {
               tooltip: 'Administrar Usuarios',
             ),
           ],
-          // Botón Actualizar
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _refreshCases,
-            tooltip: 'Actualizar',
-          ),
           // Botón Cerrar Sesión
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),

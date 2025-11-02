@@ -48,21 +48,116 @@ class _AnalysisResultState extends State<AnalysisResult> {
       final cases = await _casesService.getCasesBySerenityId(widget.serenityId!);
       if (cases.isNotEmpty) {
         final caseData = cases.first;
+        
+        // Procesar problemas del nuevo formato del agente (ahora es un array)
+        List<Map<String, dynamic>> issuesList = [];
+        if (caseData['problems'] != null) {
+          if (caseData['problems'] is List) {
+            // Nuevo formato: array de problemas
+            final problemsArray = caseData['problems'] as List<dynamic>;
+            for (final problem in problemsArray) {
+              if (problem is Map<String, dynamic>) {
+                issuesList.add({
+                  'type': problem['titulo'] ?? 'Problema',
+                  'description': problem['detalle'] ?? 'Sin descripción',
+                  'severity': problem['severity'] ?? 'Medium',
+                });
+              }
+            }
+          } else if (caseData['problems'] is Map) {
+            // Formato anterior: objeto de problemas (por compatibilidad)
+            final problems = caseData['problems'] as Map<String, dynamic>;
+            problems.forEach((key, value) {
+              if (value is Map<String, dynamic> && value.containsKey('titulo') && value.containsKey('detalle')) {
+                issuesList.add({
+                  'type': value['titulo'] ?? 'Problema',
+                  'description': value['detalle'] ?? 'Sin descripción',
+                  'severity': 'Medium',
+                });
+              }
+            });
+          }
+        }
+        
+        // Procesar recomendaciones (ahora es un array de strings simples)
+        List<String> recommendationsList = [];
+        if (caseData['recommendations'] != null) {
+          print('🔍 Tipo de recommendations: ${caseData['recommendations'].runtimeType}');
+          print('🔍 Contenido: ${caseData['recommendations']}');
+          
+          if (caseData['recommendations'] is List) {
+            // Nuevo formato: array de strings simples
+            final recommendationsArray = caseData['recommendations'] as List<dynamic>;
+            for (final recommendation in recommendationsArray) {
+              if (recommendation is String && recommendation.isNotEmpty) {
+                recommendationsList.add(recommendation);
+              } else {
+                // Para compatibilidad con formato anterior (objetos con 'text')
+                if (recommendation is Map<String, dynamic> && recommendation['text'] != null) {
+                  recommendationsList.add(recommendation['text'].toString());
+                } else {
+                  // Convertir a string y agregar si no está vacío
+                  final recText = recommendation.toString();
+                  if (recText.isNotEmpty && recText != 'null') {
+                    recommendationsList.add(recText);
+                  }
+                }
+              }
+            }
+          } else if (caseData['recommendations'] is String && caseData['recommendations'].toString().isNotEmpty) {
+            // Formato anterior: texto (por compatibilidad)
+            final recommendations = caseData['recommendations'].toString();
+            
+            // Verificar si es un JSON string que necesita ser parseado
+            if (recommendations.startsWith('{') || recommendations.startsWith('[')) {
+              try {
+                final parsed = jsonDecode(recommendations);
+                if (parsed is Map) {
+                  // Si es un mapa, extraer los valores
+                  parsed.values.forEach((value) {
+                    if (value.toString().isNotEmpty) {
+                      recommendationsList.add(value.toString());
+                    }
+                  });
+                } else if (parsed is List) {
+                  // Si es una lista, procesar cada elemento
+                  for (final item in parsed) {
+                    if (item.toString().isNotEmpty) {
+                      recommendationsList.add(item.toString());
+                    }
+                  }
+                }
+              } catch (e) {
+                // Si falla el parsing, usar como texto normal
+                recommendationsList = recommendations
+                    .split('\n')
+                    .where((rec) => rec.trim().isNotEmpty)
+                    .map((rec) => rec.trim())
+                    .toList();
+              }
+            } else {
+              // Dividir por líneas si contiene saltos de línea
+              recommendationsList = recommendations
+                  .split('\n')
+                  .where((rec) => rec.trim().isNotEmpty)
+                  .map((rec) => rec.trim().replaceAll('• ', ''))
+                  .toList();
+            }
+          }
+        }
+        final arteIdArray = caseData['arte_id'] as List<dynamic>? ?? [];
+        final totalImages = arteIdArray.length;
+
         setState(() {
           _isLoading = false;
           _analysisData = {
             'projectName': caseData['name'],
             'analysisDate': caseData['created_at'],
-            'totalImages': caseData['total_images'] ?? 0,
-            'validImages': (caseData['total_images'] ?? 0) - (caseData['problems']?['invalidImages'] ?? 0),
-            'invalidImages': caseData['problems']?['invalidImages'] ?? 0,
+            'totalImages': totalImages,
+            'invalidImages': issuesList.length, 
             'complianceScore': caseData['score'] ?? 0,
-            'issues': caseData['problems']?['issues'] ?? [],
-            'recommendations': caseData['recommendations'] != null
-                ? (caseData['recommendations'] is List
-                    ? caseData['recommendations']
-                    : [caseData['recommendations']])
-                : [],
+            'issues': issuesList,
+            'recommendations': recommendationsList,
           };
         });
       } else {
@@ -223,11 +318,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
               ],
             ),
           ),
-          
-          const SizedBox(height: 32),
-          
-          // Botones de acción
-          _buildActionButtons(),
         ],
       ),
     );
@@ -247,17 +337,8 @@ class _AnalysisResultState extends State<AnalysisResult> {
         const SizedBox(width: 16),
         Expanded(
           child: _buildSummaryCard(
-            'Imágenes Válidas',
-            _analysisData!['validImages'].toString(),
-            Icons.check_circle,
-            Colors.green,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildSummaryCard(
             'Problemas',
-            _analysisData!['invalidImages'].toString(),
+            (_analysisData!['issues'] as List).length.toString(),
             Icons.error,
             Colors.red,
           ),
@@ -360,28 +441,13 @@ class _AnalysisResultState extends State<AnalysisResult> {
   }
 
   Widget _buildIssueItem(Map<String, dynamic> issue) {
-    Color severityColor;
-    switch (issue['severity']) {
-      case 'High':
-        severityColor = Colors.red;
-        break;
-      case 'Medium':
-        severityColor = Colors.orange;
-        break;
-      case 'Low':
-        severityColor = Colors.yellow[700]!;
-        break;
-      default:
-        severityColor = Colors.grey;
-    }
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(8),
-        border: Border(left: BorderSide(width: 4, color: severityColor)),
+        border: const Border(left: BorderSide(width: 4, color: Colors.orange)),
       ),
       child: Row(
         children: [
@@ -389,36 +455,17 @@ class _AnalysisResultState extends State<AnalysisResult> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      issue['type'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: severityColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        issue['severity'],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  issue['type'] ?? 'Problema detectado',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF004B93),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  issue['description'],
+                  issue['description'] ?? 'Sin descripción disponible',
                   style: TextStyle(
                     color: Colors.grey[600],
                     fontSize: 14,
@@ -427,23 +474,17 @@ class _AnalysisResultState extends State<AnalysisResult> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              '${issue['count']} casos',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
         ],
       ),
     );
+  }
+
+  String _parseRecommendationText(dynamic recommendation) {
+    if (recommendation == null) return 'Sin recomendación disponible';
+    
+    // Como ahora solo extraemos el campo 'text' en el procesamiento,
+    // esta función solo necesita limpiar el string
+    return recommendation.toString().trim();
   }
 
   Widget _buildRecommendationsSection() {
@@ -494,7 +535,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            entry.value,
+                            _parseRecommendationText(entry.value),
                             style: const TextStyle(fontSize: 14),
                           ),
                         ),
@@ -509,64 +550,4 @@ class _AnalysisResultState extends State<AnalysisResult> {
       ),
     );
   }
-
-  void _exportReport() {
-    if (_analysisData == null) return;
-
-    // Construir CSV
-    final buffer = StringBuffer();
-    buffer.writeln('Proyecto,Fecha,Imágenes Totales,Imágenes Válidas,Problemas,Puntaje');
-    buffer.writeln('${_analysisData!['projectName']},${_analysisData!['analysisDate']},${_analysisData!['totalImages']},${_analysisData!['validImages']},${_analysisData!['invalidImages']},${_analysisData!['complianceScore']}%');
-    buffer.writeln();
-    buffer.writeln('Tipo de Problema,Severidad,Cantidad,Descripción');
-    for (final issue in _analysisData!['issues']) {
-      buffer.writeln('${issue['type']},${issue['severity']},${issue['count']},${issue['description']}');
-    }
-    buffer.writeln();
-    buffer.writeln('Recomendaciones');
-    for (final rec in _analysisData!['recommendations']) {
-      buffer.writeln(rec);
-    }
-
-    final bytes = utf8.encode(buffer.toString());
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', 'reporte_${_analysisData!['projectName']}.csv')
-      ..click();
-    html.Url.revokeObjectUrl(url);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Reporte exportado exitosamente')),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        ElevatedButton.icon(
-          onPressed: _exportReport,
-          icon: const Icon(Icons.download),
-          label: const Text('Exportar Reporte'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF004B93),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          ),
-        ),
-        const SizedBox(width: 16),
-        OutlinedButton.icon(
-          onPressed: () => context.go('/new-art'),
-          icon: const Icon(Icons.refresh),
-          label: const Text('Nuevo Análisis'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF004B93),
-            side: const BorderSide(color: Color(0xFF004B93)),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          ),
-        ),
-      ],
-    );
-  }
-
-
 }
