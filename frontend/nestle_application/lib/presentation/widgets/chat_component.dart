@@ -5,6 +5,8 @@ import 'dart:html' as html;
 import '../../core/config/app_config.dart';
 import '../../core/services/serenity_api_service.dart';
 import '../../database/cases_service.dart';
+import '../../database/storage_service.dart';
+import '../../core/auth/auth_service.dart';
 
 class ChatComponent extends StatefulWidget {
   final String projectName;
@@ -26,6 +28,8 @@ class ChatComponent extends StatefulWidget {
 
 class _ChatComponentState extends State<ChatComponent> {
   final CasesService _casesService = CasesService();
+  final StorageService _storageService = StorageService();
+  final AuthService _authService = AuthService();
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   List<Map<String, dynamic>> _chatMessages = [];
@@ -498,6 +502,8 @@ class _ChatComponentState extends State<ChatComponent> {
       _imageStatus = 'Iniciando...';
     });
 
+    String? supabaseImageUrl;
+
     try {
       final serenityService = SerenityApiService();
       
@@ -509,8 +515,33 @@ class _ChatComponentState extends State<ChatComponent> {
       setState(() {
         _imagePreviewUrl = reader.result as String?;
       });
+
+      // 1. Obtener información del usuario actual
+      final userData = await _authService.getCurrentUserData();
+      final userId = userData?['id']?.toString() ?? 'unknown';
+
+      // 2. Subir imagen a Supabase Storage primero
+      setState(() {
+        _imageStatus = 'Guardando imagen en servidor...';
+      });
+
+      supabaseImageUrl = await _storageService.uploadImageFromWeb(
+        _selectedImage!,
+        customPath: 'chat/${userId}', // Organizar en carpeta chat por usuario
+        onProgress: (status) {
+          if (mounted) {
+            setState(() {
+              _imageStatus = status;
+            });
+          }
+        },
+      );
       
-      // Subir imagen como volatile knowledge
+      // 3. Subir imagen como volatile knowledge para análisis IA
+      setState(() {
+        _imageStatus = 'Preparando para análisis IA...';
+      });
+      
       _volatileKnowledgeId = await serenityService.uploadImageToVolatileKnowledge(
         _selectedImage!,
         onStatusUpdate: (status) {
@@ -523,9 +554,9 @@ class _ChatComponentState extends State<ChatComponent> {
         },
       );
       
-      // Guardar inmediatamente el ID en la base de datos
+      // 4. Guardar inmediatamente el ID en la base de datos con URL de Supabase
       if (_volatileKnowledgeId != null) {
-        await _addImageToDatabase(_volatileKnowledgeId!);
+        await _addImageToDatabase(_volatileKnowledgeId!, supabaseImageUrl);
       }
       
       setState(() {
@@ -534,6 +565,18 @@ class _ChatComponentState extends State<ChatComponent> {
       });
       
     } catch (e) {
+      // Limpiar imagen de Supabase si se subió pero falló después
+      if (supabaseImageUrl != null) {
+        try {
+          final fileName = supabaseImageUrl.split('/').last;
+          final userData = await _authService.getCurrentUserData();
+          final userId = userData?['id']?.toString() ?? 'unknown';
+          await _storageService.deleteImage('chat/${userId}/$fileName');
+        } catch (deleteError) {
+          print('Error al eliminar imagen de Supabase: $deleteError');
+        }
+      }
+
       setState(() {
         _isUploadingFile = false;
         _imageStatus = 'Error al subir imagen';
@@ -551,7 +594,7 @@ class _ChatComponentState extends State<ChatComponent> {
   }
 
   /// Agregar imagen a la base de datos inmediatamente después del upload
-  Future<void> _addImageToDatabase(String volatileKnowledgeId) async {
+  Future<void> _addImageToDatabase(String volatileKnowledgeId, [String? supabaseImageUrl]) async {
     try {
       // Verificar que tenemos serenity_id del caso
       if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {

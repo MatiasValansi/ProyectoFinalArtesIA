@@ -6,6 +6,7 @@ import 'dart:convert';
 import '../../core/auth/auth_service.dart';
 import '../../core/services/serenity_api_service.dart';
 import '../../database/cases_service.dart';
+import '../../database/storage_service.dart';
 import '../../models/case_model.dart';
 
 
@@ -49,6 +50,7 @@ class _NewArtState extends State<NewArt> {
   final AuthService _authService = AuthService();
   final SerenityApiService _serenityApiService = SerenityApiService();
   final CasesService _casesService = CasesService();
+  final StorageService _storageService = StorageService();
   List<html.File> _selectedFiles = [];
   bool _isDragOver = false;
   bool _isUploading = false;
@@ -122,15 +124,42 @@ class _NewArtState extends State<NewArt> {
 
       // Procesar la imagen seleccionada
       final file = _selectedFiles.first;
+      String? supabaseImageUrl;
       
       try {
         setState(() {
           _uploadStatus = 'Procesando imagen: ${file.name}';
         });
+
+        // 1. Subir imagen a Supabase Storage primero
+        setState(() {
+          _uploadStatus = 'Guardando imagen en servidor...';
+        });
+
+        supabaseImageUrl = await _storageService.uploadImageFromWeb(
+          file,
+          customPath: 'cases/${userId}', // Organizar por usuario
+          onProgress: (status) {
+            if (mounted) {
+              setState(() {
+                _uploadStatus = status;
+              });
+            }
+          },
+        );
+        
+        // 2. Inicializar chat para análisis
+        setState(() {
+          _uploadStatus = 'Inicializando análisis...';
+        });
         
         final chatId = await _serenityApiService.initializeChat();
         
-        // Subir imagen como volatile knowledge
+        // 3. Subir imagen como volatile knowledge para análisis IA
+        setState(() {
+          _uploadStatus = 'Preparando para análisis IA...';
+        });
+        
         final volatileKnowledgeId = await _serenityApiService.uploadImageToVolatileKnowledge(
           file,
           onStatusUpdate: (status) {
@@ -149,13 +178,14 @@ class _NewArtState extends State<NewArt> {
         
         final analysisResponse = await _serenityApiService.executeAnalysis(chatId, volatileKnowledgeId);
 
-        // Crear el caso primero
+        // Crear el caso con la URL de Supabase
         final createdCase = await _casesService.createCaseFromModel(
           CaseModel(
             name: _productNameController.text.trim(),
             serenityId: analysisResponse.instanceId,
             userId: userId,
-            arteId: [volatileKnowledgeId]
+            arteId: [volatileKnowledgeId],
+            imageUrl: supabaseImageUrl, // Guardar URL de Supabase
           ),
         );
 
@@ -183,11 +213,23 @@ class _NewArtState extends State<NewArt> {
       } catch (fileError) {
         print('ERROR: no se pudo procesar la imagen ${file.name}: $fileError');
         
+        // Limpiar imagen de Supabase si se subió pero falló el análisis
+        if (supabaseImageUrl != null) {
+          try {
+            final fileName = supabaseImageUrl.split('/').last;
+            await _storageService.deleteImage('cases/${userId}/$fileName');
+          } catch (deleteError) {
+            print('Error al eliminar imagen de Supabase: $deleteError');
+          }
+        }
+        
         // Mostrar error específico al usuario
         if (mounted) {
           String errorMessage = 'Error procesando ${file.name}';
           
-          if (fileError.toString().contains('timeout') || fileError.toString().contains('Request timeout')) {
+          if (fileError.toString().contains('Storage')) {
+            errorMessage = 'Error al guardar imagen en servidor. Intenta nuevamente.';
+          } else if (fileError.toString().contains('timeout') || fileError.toString().contains('Request timeout')) {
             errorMessage = 'Timeout procesando ${file.name}. El archivo puede ser muy grande o la conexión lenta. Intenta con un archivo más pequeño.';
           } else if (fileError.toString().contains('Network error')) {
             errorMessage = 'Error de conexión procesando ${file.name}. Verifica tu conexión a internet.';

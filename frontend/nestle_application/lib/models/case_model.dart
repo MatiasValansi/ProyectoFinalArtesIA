@@ -10,6 +10,7 @@ class CaseModel {
   final dynamic problems; // Cambiado para soportar tanto Map como List
   final double? score;
   final dynamic recommendations; // Cambiado para soportar tanto String como List
+  final String? imageUrl; // URL de la imagen en Supabase Storage
 
   CaseModel({
     this.id,
@@ -23,6 +24,7 @@ class CaseModel {
     this.problems,
     this.score,
     this.recommendations,
+    this.imageUrl,
   });
 
   /// Factory constructor para crear una instancia desde JSON
@@ -53,6 +55,7 @@ class CaseModel {
       problems: json['problems'], // Ahora puede ser Map o List
       score: json['score']?.toDouble(),
       recommendations: json['recommendations'], // Ahora puede ser String o List
+      imageUrl: json['image_url']?.toString(),
     );
   }
 
@@ -69,6 +72,7 @@ class CaseModel {
       if (problems != null) 'problems': problems,
       if (score != null) 'score': score,
       if (recommendations != null) 'recommendations': recommendations,
+      if (imageUrl != null) 'image_url': imageUrl,
     };
   }
 
@@ -86,6 +90,7 @@ class CaseModel {
     Map<String, dynamic>? problems,
     double? score,
     String? recommendations,
+    String? imageUrl,
   }) {
     return CaseModel(
       id: id ?? this.id,
@@ -99,6 +104,7 @@ class CaseModel {
       problems: problems ?? this.problems,
       score: score ?? this.score,
       recommendations: recommendations ?? this.recommendations,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 

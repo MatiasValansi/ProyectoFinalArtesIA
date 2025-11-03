@@ -1,0 +1,226 @@
+import 'package:flutter/material.dart';
+import '../../database/storage_service.dart';
+
+/// Widget para mostrar imágenes almacenadas en Supabase Storage
+/// Maneja automáticamente URLs públicas y privadas
+class SupabaseImageWidget extends StatefulWidget {
+  final String? imageUrl;
+  final String? imagePath; // Para bucket privado
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  final Widget? placeholder;
+  final Widget? errorWidget;
+  final BorderRadius? borderRadius;
+
+  const SupabaseImageWidget({
+    super.key,
+    this.imageUrl,
+    this.imagePath,
+    this.width,
+    this.height,
+    this.fit = BoxFit.cover,
+    this.placeholder,
+    this.errorWidget,
+    this.borderRadius,
+  }) : assert(imageUrl != null || imagePath != null, 
+              'Debe proporcionar imageUrl o imagePath');
+
+  @override
+  State<SupabaseImageWidget> createState() => _SupabaseImageWidgetState();
+}
+
+class _SupabaseImageWidgetState extends State<SupabaseImageWidget> {
+  String? _signedUrl;
+  bool _isLoading = true;
+  bool _hasError = false;
+  final StorageService _storageService = StorageService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  @override
+  void didUpdateWidget(SupabaseImageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl || 
+        oldWidget.imagePath != widget.imagePath) {
+      _loadImage();
+    }
+  }
+
+  Future<void> _loadImage() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    try {
+      if (widget.imageUrl != null) {
+        // Si ya tenemos una URL pública, usarla directamente
+        _signedUrl = widget.imageUrl;
+      } else if (widget.imagePath != null) {
+        // Si tenemos un path, generar URL firmada para bucket privado
+        _signedUrl = await _storageService.getSignedUrl(
+          widget.imagePath!,
+          expiresIn: 3600, // 1 hora
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error al cargar imagen: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+    }
+  }
+
+  Widget _buildImage() {
+    if (_signedUrl == null) {
+      return _buildError();
+    }
+
+    return Image.network(
+      _signedUrl!,
+      width: widget.width,
+      height: widget.height,
+      fit: widget.fit,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return _buildPlaceholder();
+      },
+      errorBuilder: (context, error, stackTrace) {
+        print('Error al cargar imagen desde red: $error');
+        return _buildError();
+      },
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return widget.placeholder ?? 
+        Container(
+          width: widget.width,
+          height: widget.height,
+          color: Colors.grey[200],
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+  }
+
+  Widget _buildError() {
+    return widget.errorWidget ?? 
+        Container(
+          width: widget.width,
+          height: widget.height,
+          color: Colors.grey[300],
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: Colors.grey,
+                  size: 32,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Error al cargar imagen',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget child;
+
+    if (_isLoading) {
+      child = _buildPlaceholder();
+    } else if (_hasError || _signedUrl == null) {
+      child = _buildError();
+    } else {
+      child = _buildImage();
+    }
+
+    if (widget.borderRadius != null) {
+      child = ClipRRect(
+        borderRadius: widget.borderRadius!,
+        child: child,
+      );
+    }
+
+    return child;
+  }
+}
+
+/// Widget helper para mostrar avatares de usuario
+class SupabaseAvatarWidget extends StatelessWidget {
+  final String? imageUrl;
+  final String? imagePath;
+  final double size;
+  final String? initials;
+
+  const SupabaseAvatarWidget({
+    super.key,
+    this.imageUrl,
+    this.imagePath,
+    this.size = 40,
+    this.initials,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+      ),
+      child: SupabaseImageWidget(
+        imageUrl: imageUrl,
+        imagePath: imagePath,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        borderRadius: BorderRadius.circular(size / 2),
+        errorWidget: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: Colors.grey[400],
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              initials ?? '?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: size * 0.4,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

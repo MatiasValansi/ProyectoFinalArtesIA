@@ -15,6 +15,7 @@ class CasesService {
     Map<String, dynamic>? problems,
     double? score,
     String? recommendations,
+    String? imageUrl,
   }) async {
     try {
       final response = await client.from('cases').insert({
@@ -28,6 +29,7 @@ class CasesService {
         if (problems != null) 'problems': problems,
         if (score != null) 'score': score,
         if (recommendations != null) 'recommendations': recommendations,
+        if (imageUrl != null) 'image_url': imageUrl,
       }).select().single();
 
       return response;

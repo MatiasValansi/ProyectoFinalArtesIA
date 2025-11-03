@@ -93,6 +93,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
       'score': caseData['score'] ?? 0,
       'problems': caseData['problems'] ?? [],
       'recommendations': caseData['recommendations'] ?? [],
+      'image_url': caseData['image_url']?.toString(),
     };
   }
 
@@ -103,8 +104,12 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   void _setSelectedImage() {
-    // Si hay imagen subida, seleccionarla
-    if (_analysisData != null && _analysisData!['lastUploadedImage'] != null) {
+    // Primero verificar si hay URL de imagen en Supabase
+    if (_analysisData != null && _analysisData!['image_url'] != null && _analysisData!['image_url'].toString().isNotEmpty) {
+      _selectedImageUrl = _analysisData!['image_url'].toString();
+    }
+    // Fallback a la imagen subida anteriormente
+    else if (_analysisData != null && _analysisData!['lastUploadedImage'] != null) {
       final imageData = _analysisData!['lastUploadedImage'];
       _selectedImageUrl = imageData is Map ? imageData['url']?.toString() : null;
     } else {
