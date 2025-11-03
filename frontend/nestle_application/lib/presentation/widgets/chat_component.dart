@@ -838,7 +838,6 @@ class _ChatComponentState extends State<ChatComponent> {
                 'id': key,
                 'titulo': value['titulo'],
                 'detalle': value['detalle'],
-                'severity': 'Medium', // Valor por defecto
               });
             }
           });

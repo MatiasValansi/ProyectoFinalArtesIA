@@ -24,7 +24,6 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   Map<String, dynamic>? _analysisData;
   final AuthService _authService = AuthService();
   String? _selectedImageUrl;
-  String _reviewComment = '';
   bool _isSubmitting = false;
 
   @override
@@ -44,17 +43,73 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
       });
       return;
     }
-    final caseData = await CasesService().getCaseById(widget.caseId!);
-    setState(() {
-      _isLoading = false;
-      _analysisData = caseData;
-      // Si hay imagen subida, seleccionarla
-      if (_analysisData != null && _analysisData!['lastUploadedImage'] != null) {
-        _selectedImageUrl = _analysisData!['lastUploadedImage']['url'];
+    
+    try {
+      // Primero intentar obtener con información del usuario
+      final allCases = await CasesService().getAllCasesWithUserInfo();
+      final caseData = allCases.firstWhere(
+        (caseItem) => caseItem['id']?.toString() == widget.caseId,
+        orElse: () => <String, dynamic>{},
+      );
+      
+      if (caseData.isEmpty) {
+        // Si no se encuentra en la lista, usar el método directo
+        final directCaseData = await CasesService().getCaseById(widget.caseId!);
+        final adaptedData = _adaptCaseData(directCaseData);
+        setState(() {
+          _isLoading = false;
+          _analysisData = adaptedData;
+          _setSelectedImage();
+        });
       } else {
-        _selectedImageUrl = null;
+        final adaptedData = _adaptCaseData(caseData);
+        setState(() {
+          _isLoading = false;
+          _analysisData = adaptedData;
+          _setSelectedImage();
+        });
       }
-    });
+    } catch (e) {
+      print('Error cargando datos del caso: $e');
+      setState(() {
+        _isLoading = false;
+        _analysisData = null;
+      });
+    }
+  }
+
+  Map<String, dynamic>? _adaptCaseData(Map<String, dynamic>? caseData) {
+    if (caseData == null) return null;
+    
+    final userInfo = caseData['user_id'];
+    return {
+      ...caseData,
+      'user_name': userInfo is Map ? _extractUsernameFromEmail(userInfo['email']?.toString()) : 'Usuario desconocido',
+      'user_email': userInfo is Map ? userInfo['email']?.toString() ?? 'email@desconocido.com' : 'email@desconocido.com',
+      // Asegurar que los campos requeridos existan
+      'name': caseData['name']?.toString() ?? 'Proyecto sin nombre',
+      'total_images': caseData['total_images'] ?? 0,
+      'valid_images': caseData['valid_images'] ?? 0,
+      'score': caseData['score'] ?? 0,
+      'problems': caseData['problems'] ?? [],
+      'recommendations': caseData['recommendations'] ?? [],
+    };
+  }
+
+  String _extractUsernameFromEmail(String? email) {
+    if (email == null || email.isEmpty) return 'Usuario';
+    final parts = email.split('@');
+    return parts.isNotEmpty ? parts.first : 'Usuario';
+  }
+
+  void _setSelectedImage() {
+    // Si hay imagen subida, seleccionarla
+    if (_analysisData != null && _analysisData!['lastUploadedImage'] != null) {
+      final imageData = _analysisData!['lastUploadedImage'];
+      _selectedImageUrl = imageData is Map ? imageData['url']?.toString() : null;
+    } else {
+      _selectedImageUrl = null;
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -69,39 +124,49 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   Future<void> _handleDecision(bool approved) async {
+    if (widget.caseId == null) return;
+    
     setState(() {
       _isSubmitting = true;
     });
 
-    // Simular envío de decisión
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Log del comentario para debugging (en producción esto se enviaría al backend)
-    print('Decisión: ${approved ? 'Aprobado' : 'Rechazado'}');
-    if (_reviewComment.isNotEmpty) {
-      print('Comentario: $_reviewComment');
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            approved 
-              ? 'Arte aprobado exitosamente' 
-              : 'Arte rechazado. El usuario será notificado.',
-          ),
-          backgroundColor: approved ? Colors.green : Colors.red,
-        ),
-      );
-      
-      setState(() {
-        _isSubmitting = false;
-      });
-      
-      // Regresar a la pantalla anterior después de un breve delay
-      await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Actualizar el campo approved del caso en la base de datos
+      await CasesService().updateCaseApprovalStatus(widget.caseId!, approved);
       if (mounted) {
-        context.go('/home');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              approved 
+                ? 'Arte aprobado exitosamente' 
+                : 'Arte rechazado. El usuario será notificado.',
+            ),
+            backgroundColor: approved ? Colors.green : Colors.red,
+          ),
+        );
+        
+        setState(() {
+          _isSubmitting = false;
+        });
+        
+        // Regresar a la pantalla anterior después de un breve delay
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) {
+          context.go('/home');
+        }
+      }
+    } catch (e) {
+      print('Error al actualizar el estado del caso: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al procesar la decisión: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _isSubmitting = false;
+        });
       }
     }
   }
@@ -188,36 +253,45 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
             
             const SizedBox(height: 24),
             
-            // Layout principal con dos columnas
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Columna izquierda: Imagen y detalles
-                Expanded(
-                  flex: 2,
-                  child: _buildImageSection(),
-                ),
-                
-                const SizedBox(width: 24),
-                
-                // Columna derecha: Problemas y recomendaciones
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    children: [
-                      _buildProblemsSection(),
-                      const SizedBox(height: 16),
-                      _buildRecommendationsSection(),
-                    ],
+            // Layout principal con tres columnas
+            SizedBox(
+              height: 600, // Altura fija para evitar problemas de layout
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Columna 1: Imagen
+                  Expanded(
+                    flex: 1,
+                    child: _buildImageSection(),
                   ),
-                ),
-              ],
+                  
+                  const SizedBox(width: 16),
+                  
+                  // Columna 2: Problemas
+                  Expanded(
+                    flex: 1,
+                    child: _buildProblemsSection(),
+                  ),
+                  
+                  const SizedBox(width: 16),
+                  
+                  // Columna 3: Recomendaciones y Botones de decisión
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: _buildRecommendationsSection(),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildDecisionButtons(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            
-            const SizedBox(height: 32),
-            
-            // Sección de decisión
-            _buildDecisionSection(),
+
           ],
         ),
       ),
@@ -225,99 +299,149 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   Widget _buildProjectHeader() {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.folder_open,
-                  color: const Color(0xFF004B93),
-                  size: 28,
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF004B93).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  'Proyecto: ${_analysisData!['name']}',
+                child: const Icon(
+                  Icons.folder_open,
+                  color: Color(0xFF004B93),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  _analysisData!['name']?.toString() ?? 'Sin nombre',
                   style: const TextStyle(
-                    fontSize: 24,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF004B93),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildInfoItem(
-                    'Usuario:',
-                    _analysisData!['user_name'],
-                    Icons.person,
-                  ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoItem(
+                  'Usuario',
+                  _analysisData!['user_name']?.toString() ?? 'Usuario desconocido',
+                  Icons.person,
                 ),
-                Expanded(
-                  child: _buildInfoItem(
-                    'Email:',
-                    _analysisData!['user_email']?.toString() ?? '',
-                    Icons.email,
-                  ),
+              ),
+              Expanded(
+                child: _buildInfoItem(
+                  'Email',
+                  _analysisData!['user_email']?.toString() ?? '',
+                  Icons.email,
                 ),
-                Expanded(
-                  child: _buildInfoItem(
-                    'Enviado:',
-                    _formatDate(_analysisData!['created_at']),
-                    Icons.schedule,
-                  ),
+              ),
+              Expanded(
+                child: _buildInfoItem(
+                  'Fecha de envío',
+                  _analysisData!['created_at']?.toString() != null 
+                    ? _formatDate(DateTime.parse(_analysisData!['created_at'].toString()))
+                    : 'Fecha no disponible',
+                  Icons.schedule,
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildInfoItem(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon, 
+                size: 18, 
+                color: const Color(0xFF004B93),
               ),
-            ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildSummaryCards() {
+    // Obtener el número de imágenes desde arte_id array
+    final arteIdArray = _analysisData!['arte_id'] as List<dynamic>? ?? [];
+    final totalImages = arteIdArray.length;
+    
+    // Calcular problemas desde la nueva estructura
+    int issuesCount = 0;
+    if (_analysisData!['problems'] != null) {
+      if (_analysisData!['problems'] is List) {
+        issuesCount = (_analysisData!['problems'] as List).length;
+      } else if (_analysisData!['problems'] is Map && _analysisData!['problems']['issues'] != null) {
+        issuesCount = (_analysisData!['problems']['issues'] as List).length;
+      }
+    }
+    
+    final score = _analysisData!['score']?.toInt() ?? 0;
+    
     return Row(
       children: [
         Expanded(
           child: _buildSummaryCard(
             'Imágenes Totales',
-            _analysisData!['total_images'].toString(),
+            totalImages.toString(),
             Icons.image,
             Colors.blue,
           ),
@@ -325,28 +449,19 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
         const SizedBox(width: 16),
         Expanded(
           child: _buildSummaryCard(
-            'Válidas',
-            _analysisData!['valid_images'].toString(),
-            Icons.check_circle,
-            Colors.green,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildSummaryCard(
             'Problemas',
-            _analysisData!['issues_found'].toString(),
-            Icons.warning,
-            Colors.orange,
+            issuesCount.toString(),
+            Icons.error,
+            Colors.red,
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: _buildSummaryCard(
-            'Puntuación IA',
-            '${_analysisData!['score']}%',
-            Icons.psychology,
-            (_analysisData!['score'] ?? 0) >= 80 ? Colors.green : Colors.red,
+            'Puntuación',
+            '${score}%',
+            Icons.analytics,
+            score >= 80 ? Colors.green : Colors.orange,
           ),
         ),
       ],
@@ -354,257 +469,226 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageSection() {
-    final imageData = _analysisData!['lastUploadedImage'];
-    
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Última Imagen Subida',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF004B93),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Imagen principal
-            Container(
-              width: double.infinity,
-              height: 300,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  _selectedImageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Información de la imagen
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Archivo: ${imageData['name']}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Tamaño: ${imageData['size']}',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Subido: ${_formatDate(imageData['uploadDate'])}',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // Función para ver imagen en tamaño completo
-                    _showFullScreenImage(context, _selectedImageUrl!);
-                  },
-                  icon: const Icon(Icons.fullscreen),
-                  label: const Text('Ver completa'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004B93),
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProblemsSection() {
-  final problems = (_analysisData!['problems']?['issues'] ?? []) as List;
-    
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.warning,
-                  color: Colors.orange,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Problemas Detectados',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF004B93),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            SizedBox(
-              height: 200,
-              child: problems.isEmpty
-                ? Center(
-                    child: Text(
-                      'No se detectaron problemas',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: problems.length,
-                    itemBuilder: (context, index) {
-                      final problem = problems[index];
-                      return _buildProblemItem(problem);
-                    },
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProblemItem(Map<String, dynamic> problem) {
-    Color severityColor;
-    switch (problem['severity']) {
-      case 'Alto':
-        severityColor = Colors.red;
-        break;
-      case 'Medio':
-        severityColor = Colors.orange;
-        break;
-      case 'Bajo':
-        severityColor = Colors.yellow[700]!;
-        break;
-      default:
-        severityColor = Colors.grey;
-    }
-
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border(left: BorderSide(width: 4, color: severityColor)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                problem['type'],
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
+              Icon(icon, color: color, size: 24),
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: severityColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  problem['severity'],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            problem['description'],
+            title,
             style: TextStyle(
+              fontSize: 14,
               color: Colors.grey[600],
-              fontSize: 12,
             ),
           ),
-          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageSection() {
+    return Container(
+      height: 600,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            'Afecta: ${(problem['affectedImages'] as List).join(', ')}',
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 11,
-              fontStyle: FontStyle.italic,
+            'Imagen del Proyecto',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: const Color(0xFF004B93),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: _selectedImageUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        _selectedImageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error, size: 48, color: Colors.grey),
+                                SizedBox(height: 8),
+                                Text('Error cargando imagen'),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.image_not_supported, 
+                               size: 48, 
+                               color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text('No hay imagen disponible'),
+                        ],
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProblemsSection() {
+    List problems = [];
+    if (_analysisData!['problems'] != null) {
+      if (_analysisData!['problems'] is List) {
+        problems = _analysisData!['problems'] as List;
+      } else if (_analysisData!['problems'] is Map && _analysisData!['problems']['issues'] != null) {
+        problems = (_analysisData!['problems']['issues'] ?? []) as List;
+      }
+    }
+    
+    return Container(
+      height: 600,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Problemas Detectados',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: const Color(0xFF004B93),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: problems.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle, 
+                             size: 48, 
+                             color: Colors.green),
+                        SizedBox(height: 8),
+                        Text('No hay problemas detectados'),
+                      ],
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      children: problems.map((problem) => _buildProblemItem(problem)).toList(),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProblemItem(dynamic problemData) {
+    Map<String, dynamic> problem;
+    
+    if (problemData is Map<String, dynamic>) {
+      problem = problemData;
+    } else if (problemData is String) {
+      problem = {'titulo': 'Problema', 'detalle': problemData};
+    } else {
+      problem = {'titulo': 'Problema', 'detalle': 'Sin descripción'};
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: const Border(left: BorderSide(width: 4, color: Colors.orange)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  problem['titulo']?.toString() ?? 'Problema detectado',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF004B93),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  problem['detalle']?.toString() ?? 'Sin descripción disponible',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -613,228 +697,157 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   Widget _buildRecommendationsSection() {
-  final recommendations = (_analysisData!['recommendations'] is List)
-    ? _analysisData!['recommendations'] as List
-    : (_analysisData!['recommendations'] != null
-      ? [_analysisData!['recommendations']] : []);
+    final recommendations = (_analysisData!['recommendations'] is List)
+      ? _analysisData!['recommendations'] as List
+      : (_analysisData!['recommendations'] != null
+        ? [_analysisData!['recommendations']] : []);
     
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.lightbulb,
-                  color: Colors.blue,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Recomendaciones IA',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF004B93),
-                  ),
-                ),
-              ],
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Recomendaciones IA',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: const Color(0xFF004B93),
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 16),
-            
-            SizedBox(
-              height: 200,
-              child: ListView.builder(
-                itemCount: recommendations.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: recommendations.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          margin: const EdgeInsets.only(top: 6),
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF004B93),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            recommendations[index],
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ),
+                        Icon(Icons.lightbulb_outline, 
+                             size: 48, 
+                             color: Colors.grey),
+                        SizedBox(height: 8),
+                        Text('No hay recomendaciones'),
                       ],
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      children: recommendations.asMap().entries.map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 4),
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF004B93),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  entry.value.toString(),
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ).toList(),
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDecisionSection() {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Decisión del Supervisor',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF004B93),
+  Widget _buildDecisionButtons() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Decisión del Supervisor',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: const Color(0xFF004B93),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _isSubmitting ? null : () => _handleDecision(true),
+            icon: const Icon(Icons.check_circle, color: Colors.white),
+            label: Text(_isSubmitting ? 'Procesando...' : 'APROBAR ARTE'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
-            const SizedBox(height: 16),
-            
-            // Campo de comentarios
-            TextField(
-              onChanged: (value) {
-                setState(() {
-                  _reviewComment = value;
-                });
-              },
-              maxLines: 4,
-              decoration: InputDecoration(
-                labelText: 'Comentarios adicionales (opcional)',
-                hintText: 'Agregue cualquier observación o comentario sobre la revisión...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF004B93)),
-                ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: _isSubmitting ? null : () => _handleDecision(false),
+            icon: const Icon(Icons.cancel, color: Colors.white),
+            label: Text(_isSubmitting ? 'Procesando...' : 'RECHAZAR ARTE'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
-            
-            const SizedBox(height: 24),
-            
-            // Botones de decisión
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isSubmitting ? null : () => _handleDecision(false),
-                    icon: _isSubmitting 
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.close),
-                    label: Text(_isSubmitting ? 'Procesando...' : 'Rechazar'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(width: 16),
-                
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isSubmitting ? null : () => _handleDecision(true),
-                    icon: _isSubmitting 
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check),
-                    label: Text(_isSubmitting ? 'Procesando...' : 'Aprobar'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Botón de cancelar
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: _isSubmitting ? null : () => context.go('/home'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF004B93),
-                  side: const BorderSide(color: Color(0xFF004B93)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text('Cancelar'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => context.go('/home'),
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Volver al inicio'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-
-  void _showFullScreenImage(BuildContext context, String imageUrl) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          child: Stack(
-            children: [
-              Center(
-                child: InteractiveViewer(
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 20,
-                right: 20,
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 }

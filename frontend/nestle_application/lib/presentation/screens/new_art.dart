@@ -268,7 +268,6 @@ class _NewArtState extends State<NewArt> {
               'id': key,
               'titulo': value['titulo'],
               'detalle': value['detalle'],
-              'severity': 'Medium', // Valor por defecto
             });
           }
         });

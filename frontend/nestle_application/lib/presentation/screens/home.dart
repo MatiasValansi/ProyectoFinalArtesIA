@@ -135,11 +135,10 @@ class _HomeState extends State<Home> {
               // Agregar información básica del usuario si no está disponible
               return {
                 ...caseData,
-                'users': {
-                  'name':
-                      'Usuario ${caseData['user_id']?.toString().substring(0, 8) ?? 'Desconocido'}',
+                'user_id': {
+                  'id': caseData['user_id']?.toString() ?? 'unknown',
                   'email': 'usuario@empresa.com',
-                  'role': 'user',
+                  'rol': 'user',
                 },
               };
             }).toList();
@@ -354,25 +353,18 @@ class _HomeState extends State<Home> {
   Widget _buildStatisticsPanel() {
     final totalCases = _allCasesWithUsers.length;
     final pendingCases = _allCasesWithUsers.where((c) {
-      final createdAt = DateTime.tryParse(c['created_at']?.toString() ?? '');
-      return createdAt != null &&
-          DateTime.now().difference(createdAt).inDays <= 1;
+      return c['approved'] == null; // null significa pendiente de revisión
     }).length;
     final approvedCases = _allCasesWithUsers.where((c) {
-      final createdAt = DateTime.tryParse(c['created_at']?.toString() ?? '');
-      return createdAt != null &&
-          DateTime.now().difference(createdAt).inDays > 1 &&
-          DateTime.now().difference(createdAt).inDays <= 7;
+      return c['approved'] == true; // true significa aprobado
     }).length;
     final rejectedCases = _allCasesWithUsers.where((c) {
-      final createdAt = DateTime.tryParse(c['created_at']?.toString() ?? '');
-      return createdAt != null &&
-          DateTime.now().difference(createdAt).inDays > 7;
+      return c['approved'] == false; // false significa rechazado
     }).length;
 
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -388,15 +380,32 @@ class _HomeState extends State<Home> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Panel de Supervisión - Todos los Proyectos',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF004B93),
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF004B93).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.dashboard,
+                  color: Color(0xFF004B93),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'Panel de Supervisión - Todos los Proyectos',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF004B93),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -407,7 +416,7 @@ class _HomeState extends State<Home> {
                   Colors.blue,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: _buildStatCard(
                   'Pendientes',
@@ -416,7 +425,7 @@ class _HomeState extends State<Home> {
                   Colors.orange,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: _buildStatCard(
                   'Aprobados',
@@ -425,7 +434,7 @@ class _HomeState extends State<Home> {
                   Colors.green,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: _buildStatCard(
                   'Rechazados',
@@ -448,25 +457,38 @@ class _HomeState extends State<Home> {
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 24),
+          Row(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const Spacer(),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           Text(
-            value,
+            title,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
+              fontSize: 14,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
             ),
           ),
-          Text(title, style: TextStyle(fontSize: 12, color: color)),
         ],
       ),
     );
@@ -475,7 +497,7 @@ class _HomeState extends State<Home> {
   Widget _buildFilterControls() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -491,36 +513,45 @@ class _HomeState extends State<Home> {
       child: Column(
         children: [
           // Búsqueda
-          TextField(
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
-            },
-            decoration: InputDecoration(
-              hintText: 'Buscar por proyecto, usuario o email...',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey[300]!),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFF004B93)),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: TextField(
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Buscar por proyecto, usuario o email...',
+                hintStyle: TextStyle(color: Colors.grey[500]),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16, 
+                  vertical: 16,
+                ),
               ),
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           // Filtros de estado
           Row(
             children: [
-              const Text(
+              Text(
                 'Filtrar por estado:',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                  fontSize: 14,
+                ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -546,16 +577,44 @@ class _HomeState extends State<Home> {
 
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _filterStatus == value;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
+    return GestureDetector(
+      onTap: () {
         setState(() {
           _filterStatus = value;
         });
       },
-      selectedColor: const Color(0xFF004B93).withOpacity(0.2),
-      checkmarkColor: const Color(0xFF004B93),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+            ? const Color(0xFF004B93) 
+            : Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected 
+              ? const Color(0xFF004B93) 
+              : Colors.grey[300]!,
+            width: 1,
+          ),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: const Color(0xFF004B93).withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ] : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[700],
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+      ),
     );
   }
 
@@ -564,10 +623,9 @@ class _HomeState extends State<Home> {
       // Filtro por búsqueda
       if (_searchQuery.isNotEmpty) {
         final caseName = caseData['name']?.toString().toLowerCase() ?? '';
-        final userName =
-            caseData['user_id']?['email']?.toString().toLowerCase() ?? '';
-        final userEmail =
-            caseData['user_id']?['email']?.toString().toLowerCase() ?? '';
+        final userInfo = caseData['user_id'] as Map<String, dynamic>;
+        final userName = (userInfo['email']?.toString() ?? '').toLowerCase();
+        final userEmail = (userInfo['email']?.toString() ?? '').toLowerCase();
 
         if (!caseName.contains(_searchQuery.toLowerCase()) &&
             !userName.contains(_searchQuery.toLowerCase()) &&
@@ -576,21 +634,16 @@ class _HomeState extends State<Home> {
         }
       }
 
-      // Filtro por estado (simulado por ahora)
+      // Filtro por estado usando el campo approved
       if (_filterStatus != 'all') {
-        final createdAt = DateTime.tryParse(
-          caseData['created_at']?.toString() ?? '',
-        );
-        if (createdAt != null) {
-          final daysSinceCreation = DateTime.now().difference(createdAt).inDays;
-          switch (_filterStatus) {
-            case 'pending':
-              return daysSinceCreation <= 1;
-            case 'approved':
-              return daysSinceCreation > 1 && daysSinceCreation <= 7;
-            case 'rejected':
-              return daysSinceCreation > 7;
-          }
+        final approved = caseData['approved'];
+        switch (_filterStatus) {
+          case 'pending':
+            return approved == null;
+          case 'approved':
+            return approved == true;
+          case 'rejected':
+            return approved == false;
         }
       }
 
@@ -667,48 +720,53 @@ class _HomeState extends State<Home> {
 
   Widget _buildProjectCard(Map<String, dynamic> caseData) {
   final caseName = caseData['name']?.toString() ?? 'Proyecto sin nombre';
-  final userInfo = caseData['user_id'];
-  final userName = userInfo is Map && userInfo['name'] != null
-    ? userInfo['name'].toString()
-    : 'Usuario desconocido';
-  final userEmail = userInfo is Map && userInfo['email'] != null
-    ? userInfo['email'].toString()
-    : '';
-    final isActive = caseData['active'] ?? true;
+  final userInfo = caseData['user_id'] as Map<String, dynamic>;
+  final userName = userInfo['email']?.toString() ?? 'Usuario desconocido';
+  final userEmail = userInfo['email']?.toString() ?? '';
     final createdAt =
         DateTime.tryParse(caseData['created_at']?.toString() ?? '') ??
         DateTime.now();
     final serenityId = caseData['serenity_id']?.toString();
     final caseId = caseData['id']?.toString();
+    final approved = caseData['approved']; // null, true, o false
 
-    // Simular estado basado en fecha
+    // Estado basado en el valor del campo approved
     String status;
     Color statusColor;
     IconData statusIcon;
-    final daysSinceCreation = DateTime.now().difference(createdAt).inDays;
 
-    if (daysSinceCreation <= 1) {
+    if (approved == null) {
       status = 'Pendiente de revisión';
       statusColor = Colors.orange;
       statusIcon = Icons.pending;
-    } else if (daysSinceCreation <= 7) {
+    } else if (approved == true) {
       status = 'Aprobado';
       statusColor = Colors.green;
       statusIcon = Icons.check_circle;
     } else {
-      status = 'Requiere atención';
+      status = 'Rechazado';
       statusColor = Colors.red;
-      statusIcon = Icons.warning;
+      statusIcon = Icons.cancel;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             Row(
               children: [
                 Expanded(
@@ -800,27 +858,6 @@ class _HomeState extends State<Home> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? Colors.green.withOpacity(0.15)
-                            : Colors.red.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        isActive ? 'Activo' : 'Inactivo',
-                        style: TextStyle(
-                          color: isActive ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ],
@@ -876,8 +913,7 @@ class _HomeState extends State<Home> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   String _formatDate(DateTime date) {

@@ -56,14 +56,35 @@ class CasesService {
           .from('cases')
           .select('''
             *,
-            user_id(
+            user_id!inner(
               id,
               email,
-              role
+              rol
             )
           ''')
           .order('created_at', ascending: false);
-      return List<Map<String, dynamic>>.from(response);
+      
+      // Normalizar la respuesta para asegurar consistencia
+      return List<Map<String, dynamic>>.from(response).map((caseData) {
+        // Asegurar que user_id siempre tenga una estructura válida
+        final userData = caseData['user_id'];
+        if (userData == null || userData is! Map) {
+          caseData['user_id'] = {
+            'id': 'unknown',
+            'email': 'usuario@desconocido.com',
+            'rol': 'user',
+          };
+        } else {
+          // Asegurar que todos los campos requeridos existan
+          caseData['user_id'] = {
+            'id': userData['id']?.toString() ?? 'unknown',
+            'email': userData['email']?.toString() ?? 'usuario@desconocido.com',
+            'rol': userData['rol']?.toString() ?? 'user',
+          };
+        }
+        
+        return caseData;
+      }).toList();
     } catch (e) {
       throw Exception('Error al obtener casos con información de usuario: $e');
     }

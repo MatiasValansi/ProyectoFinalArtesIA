@@ -60,7 +60,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
                 issuesList.add({
                   'type': problem['titulo'] ?? 'Problema',
                   'description': problem['detalle'] ?? 'Sin descripción',
-                  'severity': problem['severity'] ?? 'Medium',
                 });
               }
             }
@@ -72,7 +71,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
                 issuesList.add({
                   'type': value['titulo'] ?? 'Problema',
                   'description': value['detalle'] ?? 'Sin descripción',
-                  'severity': 'Medium',
                 });
               }
             });
@@ -82,9 +80,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
         // Procesar recomendaciones (ahora es un array de strings simples)
         List<String> recommendationsList = [];
         if (caseData['recommendations'] != null) {
-          print('🔍 Tipo de recommendations: ${caseData['recommendations'].runtimeType}');
-          print('🔍 Contenido: ${caseData['recommendations']}');
-          
           if (caseData['recommendations'] is List) {
             // Nuevo formato: array de strings simples
             final recommendationsArray = caseData['recommendations'] as List<dynamic>;
