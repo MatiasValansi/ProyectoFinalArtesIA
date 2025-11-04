@@ -40,6 +40,13 @@ class _ChatComponentState extends State<ChatComponent> {
   String _imageStatus = '';
   String? _imagePreviewUrl;
 
+  /// Helper para hacer setState() seguro verificando si el widget está montado
+  void _safeSetState(VoidCallback fn) {
+    if (mounted) {
+      setState(fn);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -630,7 +637,7 @@ class _ChatComponentState extends State<ChatComponent> {
       final userId = userData?['id']?.toString() ?? 'unknown';
 
       // 2. Subir imagen a Supabase Storage primero
-      setState(() {
+      _safeSetState(() {
         _imageStatus = 'Guardando imagen en servidor...';
       });
 
@@ -647,7 +654,7 @@ class _ChatComponentState extends State<ChatComponent> {
       );
       
       // 3. Subir imagen como volatile knowledge para análisis IA
-      setState(() {
+      _safeSetState(() {
         _imageStatus = 'Preparando para análisis IA...';
       });
       
@@ -668,7 +675,7 @@ class _ChatComponentState extends State<ChatComponent> {
         await _addImageToDatabase(_volatileKnowledgeId!, supabaseImageUrl);
       }
       
-      setState(() {
+      _safeSetState(() {
         _isUploadingFile = false;
         _imageStatus = 'Imagen guardada y lista para análisis';
       });
@@ -686,7 +693,7 @@ class _ChatComponentState extends State<ChatComponent> {
         }
       }
 
-      setState(() {
+      _safeSetState(() {
         _isUploadingFile = false;
         _imageStatus = 'Error al subir imagen';
       });
@@ -844,7 +851,7 @@ class _ChatComponentState extends State<ChatComponent> {
     try {
       // Si no hay serenity_id del case, mostrar error
       if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
-        setState(() {
+        _safeSetState(() {
           _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
           _chatMessages.add({
             'isUser': false,
@@ -854,7 +861,7 @@ class _ChatComponentState extends State<ChatComponent> {
           });
           _isChatSending = false;
         });
-        _scrollToBottom();
+        if (mounted) _scrollToBottom();
         return;
       }
 
@@ -885,7 +892,7 @@ class _ChatComponentState extends State<ChatComponent> {
         final data = jsonDecode(response.body);
 
         // Primero mostrar la respuesta al usuario
-        setState(() {
+        _safeSetState(() {
           // Remover mensaje de carga
           _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
           // Agregar respuesta de la IA
@@ -914,7 +921,7 @@ class _ChatComponentState extends State<ChatComponent> {
         errorMessage = 'Error en la respuesta del servidor. Intenta nuevamente.';
       }
       
-      setState(() {
+      _safeSetState(() {
         // Remover mensaje de carga y mostrar error
         _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
         _chatMessages.add({

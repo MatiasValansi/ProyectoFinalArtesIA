@@ -32,6 +32,11 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
     _loadAnalysisData();
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   Future<void> _loadAnalysisData() async {
     // Simular carga de datos del análisis
     await Future.delayed(const Duration(seconds: 1));
@@ -81,6 +86,9 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   Map<String, dynamic>? _adaptCaseData(Map<String, dynamic>? caseData) {
     if (caseData == null) return null;
     
+    print('DEBUG: Datos del caso recibidos: $caseData');
+    print('DEBUG: image_urls en caso: ${caseData['image_urls']}');
+    
     final userInfo = caseData['user_id'];
     return {
       ...caseData,
@@ -93,7 +101,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
       'score': caseData['score'] ?? 0,
       'problems': caseData['problems'] ?? [],
       'recommendations': caseData['recommendations'] ?? [],
-      'image_url': caseData['image_url']?.toString(),
+      'image_urls': caseData['image_urls'] ?? [],
     };
   }
 
@@ -104,12 +112,18 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   void _setSelectedImage() {
-    // Primero verificar si hay URL de imagen en Supabase
-    if (_analysisData != null && _analysisData!['image_url'] != null && _analysisData!['image_url'].toString().isNotEmpty) {
-      _selectedImageUrl = _analysisData!['image_url'].toString();
+    // Primero verificar si hay URLs de imagen en Supabase (usar la primera del array)
+    if (_analysisData != null && _analysisData!['image_urls'] != null) {
+      final imageUrls = _analysisData!['image_urls'] as List?;
+      if (imageUrls != null && imageUrls.isNotEmpty) {
+        // Tomar la primera URL (la más reciente si se está guardando en orden)
+        _selectedImageUrl = imageUrls.first.toString();
+        print('DEBUG: Imagen seleccionada desde image_urls: $_selectedImageUrl');
+        return;
+      }
     }
     // Fallback a la imagen subida anteriormente
-    else if (_analysisData != null && _analysisData!['lastUploadedImage'] != null) {
+    if (_analysisData != null && _analysisData!['lastUploadedImage'] != null) {
       final imageData = _analysisData!['lastUploadedImage'];
       _selectedImageUrl = imageData is Map ? imageData['url']?.toString() : null;
     } else {

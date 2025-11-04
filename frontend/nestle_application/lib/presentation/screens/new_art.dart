@@ -185,7 +185,7 @@ class _NewArtState extends State<NewArt> {
             serenityId: analysisResponse.instanceId,
             userId: userId,
             arteId: [volatileKnowledgeId],
-            imageUrl: supabaseImageUrl, // Guardar URL de Supabase
+            imageUrls: [supabaseImageUrl], // Guardar URL de Supabase como lista
           ),
         );
 

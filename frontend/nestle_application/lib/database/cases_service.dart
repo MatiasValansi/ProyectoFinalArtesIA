@@ -15,7 +15,7 @@ class CasesService {
     Map<String, dynamic>? problems,
     double? score,
     String? recommendations,
-    String? imageUrl,
+    List<String>? imageUrls,
   }) async {
     try {
       final response = await client.from('cases').insert({
@@ -29,7 +29,7 @@ class CasesService {
         if (problems != null) 'problems': problems,
         if (score != null) 'score': score,
         if (recommendations != null) 'recommendations': recommendations,
-        if (imageUrl != null) 'image_url': imageUrl,
+        if (imageUrls != null) 'image_urls': imageUrls,
       }).select().single();
 
       return response;
@@ -653,6 +653,135 @@ class CasesService {
           .eq('id', caseId);
     } catch (e) {
       throw Exception('Error al limpiar análisis del caso: $e');
+    }
+  }
+
+  // ========== MÉTODOS PARA MANEJAR URLS DE IMÁGENES ==========
+
+  /// Agregar una nueva URL de imagen a un caso (se añade al final del array)
+  Future<void> addImageUrlToCase(String caseId, String imageUrl) async {
+    try {
+      // Primero obtenemos las URLs actuales
+      final currentCase = await getCaseById(caseId);
+      if (currentCase == null) {
+        throw Exception('Caso no encontrado');
+      }
+
+      List<String> currentUrls = [];
+      if (currentCase['image_urls'] != null) {
+        if (currentCase['image_urls'] is List) {
+          currentUrls = List<String>.from(currentCase['image_urls']);
+        }
+      }
+
+      // Agregamos la nueva URL al final
+      currentUrls.add(imageUrl);
+
+      // Actualizamos el caso
+      await client
+          .from('cases')
+          .update({'image_urls': currentUrls})
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al agregar URL de imagen al caso: $e');
+    }
+  }
+
+  /// Remover una URL de imagen específica de un caso
+  Future<void> removeImageUrlFromCase(String caseId, String imageUrl) async {
+    try {
+      // Primero obtenemos las URLs actuales
+      final currentCase = await getCaseById(caseId);
+      if (currentCase == null) {
+        throw Exception('Caso no encontrado');
+      }
+
+      List<String> currentUrls = [];
+      if (currentCase['image_urls'] != null) {
+        if (currentCase['image_urls'] is List) {
+          currentUrls = List<String>.from(currentCase['image_urls']);
+        }
+      }
+
+      // Removemos la URL específica
+      currentUrls.remove(imageUrl);
+
+      // Actualizamos el caso
+      await client
+          .from('cases')
+          .update({'image_urls': currentUrls})
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al remover URL de imagen del caso: $e');
+    }
+  }
+
+  /// Actualizar todas las URLs de imagen de un caso
+  Future<void> updateCaseImageUrls(String caseId, List<String> imageUrls) async {
+    try {
+      await client
+          .from('cases')
+          .update({'image_urls': imageUrls})
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al actualizar URLs de imágenes del caso: $e');
+    }
+  }
+
+  /// Obtener las URLs de imágenes de un caso en orden inverso (última subida primero)
+  Future<List<String>> getCaseImageUrlsReversed(String caseId) async {
+    try {
+      final currentCase = await getCaseById(caseId);
+      if (currentCase == null) {
+        return [];
+      }
+
+      List<String> imageUrls = [];
+      if (currentCase['image_urls'] != null) {
+        if (currentCase['image_urls'] is List) {
+          imageUrls = List<String>.from(currentCase['image_urls']);
+        }
+      }
+
+      // Retornamos en orden inverso (última subida primero)
+      return imageUrls.reversed.toList();
+    } catch (e) {
+      print('Error al obtener URLs de imágenes: $e');
+      return [];
+    }
+  }
+
+  /// Obtener las URLs de imágenes de un caso en orden normal
+  Future<List<String>> getCaseImageUrls(String caseId) async {
+    try {
+      final currentCase = await getCaseById(caseId);
+      if (currentCase == null) {
+        return [];
+      }
+
+      List<String> imageUrls = [];
+      if (currentCase['image_urls'] != null) {
+        if (currentCase['image_urls'] is List) {
+          imageUrls = List<String>.from(currentCase['image_urls']);
+        }
+      }
+
+      return imageUrls;
+    } catch (e) {
+      print('Error al obtener URLs de imágenes: $e');
+      return [];
+    }
+  }
+
+  /// Limpiar todas las URLs de imágenes de un caso
+  Future<void> clearCaseImageUrls(String caseId) async {
+    try {
+      await client
+          .from('cases')
+          .update({'image_urls': <String>[]})
+          .eq('id', caseId);
+    } catch (e) {
+      throw Exception('Error al limpiar URLs de imágenes del caso: $e');
     }
   }
 }
