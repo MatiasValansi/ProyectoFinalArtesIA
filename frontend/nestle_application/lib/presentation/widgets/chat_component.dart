@@ -726,14 +726,39 @@ class _ChatComponentState extends State<ChatComponent> {
       
       final caseId = cases.first['id'];
       final currentArteId = cases.first['arte_id'] as List<dynamic>? ?? [];
+      final currentImageUrls = cases.first['image_urls'] as List<dynamic>? ?? [];
+      
+      print('💾 Estado actual del caso:');
+      print('💾 - Arte IDs: $currentArteId');
+      print('💾 - Image URLs: $currentImageUrls');
+      print('💾 - Nuevo volatileKnowledgeId: $volatileKnowledgeId');
+      print('💾 - Nueva supabaseImageUrl: $supabaseImageUrl');
       
       // Solo agregar si no está ya en el array (evitar duplicados)
       if (!currentArteId.contains(volatileKnowledgeId)) {
         final newArteId = List<String>.from(currentArteId)..add(volatileKnowledgeId);
+        final newImageUrls = List<String>.from(currentImageUrls);
+        
+        // Agregar la URL de Supabase al array si se proporciona
+        if (supabaseImageUrl != null && !newImageUrls.contains(supabaseImageUrl)) {
+          newImageUrls.add(supabaseImageUrl);
+          print('💾 ✓ Nueva URL agregada al array');
+        } else {
+          print('💾 ⚠️ URL no agregada - null o ya existe');
+        }
+        
+        print('💾 Actualizando caso con:');
+        print('💾 - Nuevos Arte IDs: $newArteId');
+        print('💾 - Nuevas URLs: $newImageUrls');
         
         await _casesService.client.from('cases').update({
           'arte_id': newArteId,
+          'image_urls': newImageUrls,
         }).eq('id', caseId);
+        
+        print('💾 ✓ Caso actualizado exitosamente');
+      } else {
+        print('💾 ⚠️ volatileKnowledgeId ya existe, no se agrega');
       }
       
     } catch (e) {
@@ -758,13 +783,24 @@ class _ChatComponentState extends State<ChatComponent> {
       
       final caseId = cases.first['id'];
       final currentArteId = cases.first['arte_id'] as List<dynamic>? ?? [];
+      final currentImageUrls = cases.first['image_urls'] as List<dynamic>? ?? [];
       
       // Remover el ID del array si existe
       if (currentArteId.contains(volatileKnowledgeId)) {
+        final arteIndex = currentArteId.indexOf(volatileKnowledgeId);
         final newArteId = List<String>.from(currentArteId)..remove(volatileKnowledgeId);
+        final newImageUrls = List<String>.from(currentImageUrls);
+        
+        // Si hay la misma cantidad de URLs que de arte_ids, remover la URL correspondiente por índice
+        if (arteIndex < newImageUrls.length && arteIndex >= 0) {
+          newImageUrls.removeAt(arteIndex);
+        }
+        
+        print('🗑️ Removiendo imagen del caso, nuevas URLs: $newImageUrls');
         
         await _casesService.client.from('cases').update({
           'arte_id': newArteId,
+          'image_urls': newImageUrls,
         }).eq('id', caseId);
       }
       

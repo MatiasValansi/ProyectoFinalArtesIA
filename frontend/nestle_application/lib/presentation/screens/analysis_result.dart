@@ -26,6 +26,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
   final AuthService _authService = AuthService();
   final CasesService _casesService = CasesService();
   List<String> _imageUrls = [];
+  int _currentImageIndex = 0;
 
 
   @override
@@ -154,15 +155,21 @@ class _AnalysisResultState extends State<AnalysisResult> {
         // Usar image_urls en lugar de arte_id para las URLs de las imágenes
         if (caseData['image_urls'] != null) {
           final imageUrlsData = caseData['image_urls'];
-          print('📷 Image URLs encontradas: $imageUrlsData');
+          print('📷 Image URLs encontradas (${imageUrlsData.runtimeType}): $imageUrlsData');
           
           if (imageUrlsData is List) {
-            for (final url in imageUrlsData) {
+            print('📷 Procesando lista de ${imageUrlsData.length} URLs...');
+            for (int i = 0; i < imageUrlsData.length; i++) {
+              final url = imageUrlsData[i];
               if (url is String && url.isNotEmpty) {
                 imageUrls.add(url);
-                print('📷 URL agregada: $url');
+                print('📷 URL [$i] agregada: $url');
+              } else {
+                print('📷 URL [$i] ignorada (vacía o no string): $url');
               }
             }
+          } else {
+            print('📷 ⚠️ image_urls no es una lista: ${imageUrlsData.runtimeType}');
           }
         } else {
           print('📷 No se encontraron image_urls en la base de datos');
@@ -174,6 +181,8 @@ class _AnalysisResultState extends State<AnalysisResult> {
             }
           }
         }
+        
+        print('📷 Total de URLs procesadas: ${imageUrls.length}');
 
         print('📊 Datos procesados: ${issuesList.length} problemas, ${recommendationsList.length} recomendaciones, ${imageUrls.length} imágenes');
         
@@ -182,6 +191,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
           setState(() {
             _isLoading = false;
             _imageUrls = imageUrls;
+            _currentImageIndex = 0; // Resetear a la primera imagen
             _analysisData = {
               'projectName': caseData['name'],
               'analysisDate': caseData['created_at'],
@@ -567,12 +577,37 @@ class _AnalysisResultState extends State<AnalysisResult> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            'Imagen de Muestra',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: const Color(0xFF004B93),
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (_imageUrls.length > 1)
+                IconButton(
+                  onPressed: _currentImageIndex > 0 ? () {
+                    setState(() {
+                      _currentImageIndex--;
+                    });
+                  } : null,
+                  icon: const Icon(Icons.arrow_back_ios),
+                ),
+              Text(
+                _imageUrls.length > 1 
+                    ? 'Imagen ${_currentImageIndex + 1} de ${_imageUrls.length}'
+                    : 'Imagen de Muestra',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: const Color(0xFF004B93),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (_imageUrls.length > 1)
+                IconButton(
+                  onPressed: _currentImageIndex < _imageUrls.length - 1 ? () {
+                    setState(() {
+                      _currentImageIndex++;
+                    });
+                  } : null,
+                  icon: const Icon(Icons.arrow_forward_ios),
+                ),
+            ],
           ),
           const SizedBox(height: 20),
           Expanded(
@@ -580,7 +615,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
-                      _imageUrls.first,
+                      _imageUrls[_currentImageIndex],
                       fit: BoxFit.contain,
                       width: double.infinity,
                       errorBuilder: (context, error, stackTrace) {
@@ -605,7 +640,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'URL: ${_imageUrls.first}',
+                                  'URL: ${_imageUrls[_currentImageIndex]}',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.grey[600],
@@ -673,7 +708,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      'Debug: ${_imageUrls.first}',
+                      'Debug: ${_imageUrls[_currentImageIndex]}',
                       style: TextStyle(
                         fontSize: 10,
                         color: Colors.grey[500],
