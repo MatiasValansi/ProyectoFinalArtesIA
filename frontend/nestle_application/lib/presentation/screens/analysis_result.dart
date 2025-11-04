@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
-import 'dart:html' as html;
 import '../widgets/chat_component.dart';
 import '../../core/auth/auth_service.dart';
 import '../../database/cases_service.dart';

@@ -35,7 +35,6 @@ class _ChatComponentState extends State<ChatComponent> {
   List<Map<String, dynamic>> _chatMessages = [];
   bool _isChatSending = false;
   html.File? _selectedImage;
-  String? _selectedImageBase64;
   String? _volatileKnowledgeId;
   bool _isUploadingFile = false;
   String _imageStatus = '';
@@ -341,6 +340,7 @@ class _ChatComponentState extends State<ChatComponent> {
     final isLoading = message['isLoading'] as bool? ?? false;
     final hasImage = message['hasImage'] as bool? ?? false;
     final imageName = message['imageName'] as String?;
+    final imageUrl = message['imageUrl'] as String?;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -369,7 +369,7 @@ class _ChatComponentState extends State<ChatComponent> {
               crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Container(
-                  constraints: const BoxConstraints(maxWidth: 250),
+                  constraints: const BoxConstraints(maxWidth: 280),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: isUser ? const Color(0xFF004B93) : Colors.grey[100],
@@ -407,7 +407,111 @@ class _ChatComponentState extends State<ChatComponent> {
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (hasImage && imageName != null) ...[
+                            if (hasImage && imageUrl != null) ...[
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                width: double.infinity,
+                                constraints: const BoxConstraints(maxHeight: 200),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isUser 
+                                        ? Colors.white.withOpacity(0.3) 
+                                        : Colors.grey[300]!,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        height: 80,
+                                        color: isUser 
+                                            ? Colors.white.withOpacity(0.2) 
+                                            : Colors.grey[200],
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.broken_image,
+                                                size: 32,
+                                                color: isUser ? Colors.white : Colors.grey[600],
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'Error al cargar imagen',
+                                                style: TextStyle(
+                                                  color: isUser ? Colors.white : Colors.grey[600],
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        height: 80,
+                                        color: isUser 
+                                            ? Colors.white.withOpacity(0.2) 
+                                            : Colors.grey[200],
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress.expectedTotalBytes != null
+                                                ? loadingProgress.cumulativeBytesLoaded / 
+                                                  loadingProgress.expectedTotalBytes!
+                                                : null,
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              isUser ? Colors.white : const Color(0xFF004B93),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                              if (imageName != null) ...[
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isUser 
+                                        ? Colors.white.withOpacity(0.2) 
+                                        : Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.image,
+                                        size: 16,
+                                        color: isUser ? Colors.white : Colors.grey[600],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          imageName,
+                                          style: TextStyle(
+                                            color: isUser ? Colors.white : Colors.grey[600],
+                                            fontSize: 12,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ] else if (hasImage && imageName != null) ...[
+                              // Fallback si no hay URL pero sí imagen
                               Container(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -426,24 +530,29 @@ class _ChatComponentState extends State<ChatComponent> {
                                       color: isUser ? Colors.white : Colors.grey[600],
                                     ),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      imageName,
-                                      style: TextStyle(
-                                        color: isUser ? Colors.white : Colors.grey[600],
-                                        fontSize: 12,
+                                    Flexible(
+                                      child: Text(
+                                        imageName,
+                                        style: TextStyle(
+                                          color: isUser ? Colors.white : Colors.grey[600],
+                                          fontSize: 12,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                             ],
-                            Text(
-                              messageText,
-                              style: TextStyle(
-                                color: isUser ? Colors.white : Colors.black87,
-                                fontSize: 14,
+                            if (messageText.trim().isNotEmpty) ...[
+                              Text(
+                                messageText,
+                                style: TextStyle(
+                                  color: isUser ? Colors.white : Colors.black87,
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                 ),
@@ -665,7 +774,6 @@ class _ChatComponentState extends State<ChatComponent> {
     
     setState(() {
       _selectedImage = null;
-      _selectedImageBase64 = null;
       _volatileKnowledgeId = null;
       _imageStatus = '';
       _imagePreviewUrl = null;
@@ -699,8 +807,9 @@ class _ChatComponentState extends State<ChatComponent> {
         'isUser': true,
         'message': messageText,
         'timestamp': DateTime.now(),
-        'hasImage': _selectedImageBase64 != null,
+        'hasImage': _selectedImage != null,
         'imageName': _selectedImage?.name,
+        'imageUrl': _imagePreviewUrl, // Guardar la URL de la imagen
       });
       
       // Agregar indicador de carga para la respuesta de IA
@@ -723,7 +832,6 @@ class _ChatComponentState extends State<ChatComponent> {
       setState(() {
         _volatileKnowledgeId = null;
         _selectedImage = null;
-        _selectedImageBase64 = null;
         _imageStatus = '';
         _imagePreviewUrl = null;
       });
