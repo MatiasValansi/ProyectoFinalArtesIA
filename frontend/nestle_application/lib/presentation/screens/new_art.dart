@@ -179,6 +179,7 @@ class _NewArtState extends State<NewArt> {
         final analysisResponse = await _serenityApiService.executeAnalysis(chatId, volatileKnowledgeId);
 
         // Crear el caso con la URL de Supabase
+        print('💾 Creando caso con imageUrls: [$supabaseImageUrl]');
         final createdCase = await _casesService.createCaseFromModel(
           CaseModel(
             name: _productNameController.text.trim(),
@@ -188,6 +189,7 @@ class _NewArtState extends State<NewArt> {
             imageUrls: [supabaseImageUrl], // Guardar URL de Supabase como lista
           ),
         );
+        print('💾 Caso creado exitosamente con ID: ${createdCase.id}');
 
         // Ahora necesitamos obtener la respuesta completa del análisis para extraer los resultados
         // Nota: analysisResponse solo contiene información básica, necesitamos la respuesta completa del agente

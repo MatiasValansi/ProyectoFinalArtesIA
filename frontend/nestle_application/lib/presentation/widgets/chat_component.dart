@@ -886,7 +886,7 @@ class _ChatComponentState extends State<ChatComponent> {
         Uri.parse(AppConfig.nestleCheckAgentUrl),
         headers: AppConfig.apiHeaders,
         body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 120)); // Timeout de 2 minutos para análisis
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -913,9 +913,7 @@ class _ChatComponentState extends State<ChatComponent> {
     } catch (e) {
       String errorMessage = 'Error de conexión: No se pudo enviar el mensaje.';
       
-      if (e.toString().contains('TimeoutException') || e.toString().contains('timeout')) {
-        errorMessage = 'La solicitud tardó mucho tiempo. El análisis de imágenes puede tomar varios minutos. Intenta nuevamente.';
-      } else if (e.toString().contains('SocketException') || e.toString().contains('Network')) {
+      if (e.toString().contains('SocketException') || e.toString().contains('Network')) {
         errorMessage = 'Error de red: Verifica tu conexión a internet e intenta nuevamente.';
       } else if (e.toString().contains('FormatException')) {
         errorMessage = 'Error en la respuesta del servidor. Intenta nuevamente.';
@@ -1043,12 +1041,24 @@ class _ChatComponentState extends State<ChatComponent> {
       
       // Actualizar el caso solo si hay datos para actualizar
       if (updateData.isNotEmpty) {
+        print('🔄 Actualizando caso en BD con datos: $updateData');
         await _casesService.client.from('cases').update(updateData).eq('id', caseId);
         
         // Notificar al componente padre que los datos han sido actualizados
-        if (widget.onAnalysisUpdated != null) {
-          widget.onAnalysisUpdated!();
+        print('🔄 Notificando actualización al componente padre...');
+        if (widget.onAnalysisUpdated != null && mounted) {
+          // Usar Future.microtask para asegurar que se ejecute después del frame actual
+          Future.microtask(() {
+            if (mounted && widget.onAnalysisUpdated != null) {
+              widget.onAnalysisUpdated!();
+              print('🔄 Callback ejecutado exitosamente');
+            }
+          });
+        } else {
+          print('❌ No hay callback configurado o widget no montado');
         }
+      } else {
+        print('📝 No hay datos para actualizar');
       }
       
     } catch (e) {
