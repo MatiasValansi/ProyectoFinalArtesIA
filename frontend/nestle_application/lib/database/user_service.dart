@@ -41,6 +41,7 @@ class UserService {
     }
   }
 
+  /// Obtener todos los usuarios
   Future<List<Map<String, dynamic>>> getUsers() async {
     final response = await client.from('users').select();
     return List<Map<String, dynamic>>.from(response);
@@ -59,6 +60,7 @@ class UserService {
     await client.from('users').delete().eq('id', userId);
   }
 
+  /// Obtener un usuario por auth_uid
   Future<Map<String, dynamic>?> getUserByAuthUid(String authUid) async {
     try {
       final response = await client

@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+//Configuración de la base de datos Supabase
 class SupabaseConfig {
   static Future<void> initialize() async {
     await Supabase.initialize(
