@@ -285,88 +285,14 @@ class _HomeState extends State<Home> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Controles de filtro para usuarios
+                // Controles de filtro
                 if (_userCases.isNotEmpty) ...[
-                  _buildUserFilterControls(),
+                  _buildFilterControls(isForUserView: true),
                   const SizedBox(height: 16),
                 ],
                 
                 Expanded(
-                  child: _filteredUserCases.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _userSearchQuery.isNotEmpty || _userFilterStatus != 'all'
-                                    ? Icons.search_off
-                                    : Icons.folder_open,
-                                size: 64,
-                                color: Colors.grey,
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                _userSearchQuery.isNotEmpty || _userFilterStatus != 'all'
-                                    ? 'No se encontraron proyectos con los filtros aplicados'
-                                    : _userCases.isEmpty 
-                                        ? 'No tienes proyectos asignados'
-                                        : 'No se encontraron proyectos',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              if (_userSearchQuery.isNotEmpty || _userFilterStatus != 'all') ...[
-                                const SizedBox(height: 8),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _userSearchQuery = '';
-                                      _userFilterStatus = 'all';
-                                    });
-                                  },
-                                  child: const Text('Limpiar filtros'),
-                                ),
-                              ] else if (_userCases.isEmpty) ...[
-                                SizedBox(height: 8),
-                                Text(
-                                  'Los proyectos asignados a ti aparecerán aquí',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _filteredUserCases.length,
-                          itemBuilder: (context, index) {
-                            final caseModel = _filteredUserCases[index];
-                            String estado;
-                            Color color;
-                            if (caseModel.approved == null) {
-                              estado = "En proceso";
-                              color = Colors.amber;
-                            } else if (caseModel.approved == true) {
-                              estado = "Aprobado";
-                              color = Colors.green;
-                            } else {
-                              estado = "Desaprobado";
-                              color = Colors.red;
-                            }
-                            return _projectRow(
-                              caseModel.name,
-                              estado,
-                              color,
-                              context,
-                              caseModel,
-                            );
-                          },
-                        ),
+                  child: _buildProjectsList(isForUserView: true),
                 ),
               ],
             ),
@@ -379,14 +305,14 @@ class _HomeState extends State<Home> {
   Widget _buildSupervisorDashboard() {
     return Column(
       children: [
-        // Panel de estadísticas
-        _buildStatisticsPanel(),
+        // Panel de estadísticas (solo para supervisores)
+        if (_isSupervisor) _buildStatisticsPanel(),
 
         // Controles de filtro y búsqueda
         _buildFilterControls(),
 
         // Lista de casos
-        Expanded(child: _buildCasesList()),
+        Expanded(child: _buildProjectsList()),
       ],
     );
   }
@@ -535,10 +461,10 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _buildFilterControls() {
+  Widget _buildFilterControls({bool isForUserView = false}) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
+      margin: isForUserView ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.all(isForUserView ? 16 : 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -563,11 +489,17 @@ class _HomeState extends State<Home> {
             child: TextField(
               onChanged: (value) {
                 setState(() {
-                  _searchQuery = value;
+                  if (isForUserView) {
+                    _userSearchQuery = value;
+                  } else {
+                    _searchQuery = value;
+                  }
                 });
               },
               decoration: InputDecoration(
-                hintText: 'Buscar por proyecto, usuario o email...',
+                hintText: isForUserView 
+                  ? 'Buscar por nombre del proyecto...'
+                  : 'Buscar por proyecto, usuario o email...',
                 hintStyle: TextStyle(color: Colors.grey[500]),
                 prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
                 border: InputBorder.none,
@@ -579,32 +511,32 @@ class _HomeState extends State<Home> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: isForUserView ? 12 : 16),
 
           // Filtros de estado
           Row(
             children: [
               Text(
-                'Filtrar por estado:',
+                isForUserView ? 'Estado:' : 'Filtrar por estado:',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Colors.grey[700],
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: isForUserView ? 12 : 16),
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildFilterChip('Todos', 'all'),
+                      _buildFilterChip('Todos', 'all', isForUserView: isForUserView),
                       const SizedBox(width: 8),
-                      _buildFilterChip('Pendientes', 'pending'),
+                      _buildFilterChip(isForUserView ? 'En proceso' : 'Pendientes', 'pending', isForUserView: isForUserView),
                       const SizedBox(width: 8),
-                      _buildFilterChip('Aprobados', 'approved'),
+                      _buildFilterChip('Aprobados', 'approved', isForUserView: isForUserView),
                       const SizedBox(width: 8),
-                      _buildFilterChip('Rechazados', 'rejected'),
+                      _buildFilterChip(isForUserView ? 'Rechazados' : 'Rechazados', 'rejected', isForUserView: isForUserView),
                     ],
                   ),
                 ),
@@ -616,12 +548,19 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _buildFilterChip(String label, String value) {
-    final isSelected = _filterStatus == value;
+  Widget _buildFilterChip(String label, String value, {bool isForUserView = false}) {
+    final isSelected = isForUserView 
+      ? _userFilterStatus == value 
+      : _filterStatus == value;
+    
     return GestureDetector(
       onTap: () {
         setState(() {
-          _filterStatus = value;
+          if (isForUserView) {
+            _userFilterStatus = value;
+          } else {
+            _filterStatus = value;
+          }
         });
       },
       child: AnimatedContainer(
@@ -659,128 +598,7 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _buildUserFilterControls() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Búsqueda
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  _userSearchQuery = value;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Buscar por nombre del proyecto...',
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, 
-                  vertical: 16,
-                ),
-              ),
-            ),
-          ),
 
-          const SizedBox(height: 12),
-
-          // Filtros de estado
-          Row(
-            children: [
-              Text(
-                'Estado:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[700],
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildUserFilterChip('Todos', 'all'),
-                      const SizedBox(width: 8),
-                      _buildUserFilterChip('En proceso', 'pending'),
-                      const SizedBox(width: 8),
-                      _buildUserFilterChip('Aprobados', 'approved'),
-                      const SizedBox(width: 8),
-                      _buildUserFilterChip('Rechazados', 'rejected'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUserFilterChip(String label, String value) {
-    final isSelected = _userFilterStatus == value;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _userFilterStatus = value;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected 
-            ? const Color(0xFF004B93) 
-            : Colors.grey[100],
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected 
-              ? const Color(0xFF004B93) 
-              : Colors.grey[300]!,
-            width: 1,
-          ),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: const Color(0xFF004B93).withOpacity(0.2),
-              spreadRadius: 1,
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ] : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey[700],
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
 
   List<Map<String, dynamic>> get _filteredCases {
     var filtered = _allCasesWithUsers.where((caseData) {
@@ -864,16 +682,28 @@ class _HomeState extends State<Home> {
     return filtered;
   }
 
-  Widget _buildCasesList() {
-    final filteredCases = _filteredCases;
+  Widget _buildProjectsList({bool isForUserView = false}) {
+    late final List items;
+    late final bool hasSearchQuery;
+    late final bool hasFilterStatus;
+    
+    if (isForUserView) {
+      items = _filteredUserCases;
+      hasSearchQuery = _userSearchQuery.isNotEmpty;
+      hasFilterStatus = _userFilterStatus != 'all';
+    } else {
+      items = _filteredCases;
+      hasSearchQuery = _searchQuery.isNotEmpty;
+      hasFilterStatus = _filterStatus != 'all';
+    }
 
-    if (filteredCases.isEmpty) {
+    if (items.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              _searchQuery.isNotEmpty || _filterStatus != 'all'
+              hasSearchQuery || hasFilterStatus
                   ? Icons.search_off
                   : Icons.folder_open,
               size: 64,
@@ -881,9 +711,13 @@ class _HomeState extends State<Home> {
             ),
             const SizedBox(height: 16),
             Text(
-              _searchQuery.isNotEmpty || _filterStatus != 'all'
+              hasSearchQuery || hasFilterStatus
                   ? 'No se encontraron proyectos con los filtros aplicados'
-                  : 'No hay proyectos disponibles',
+                  : isForUserView 
+                    ? (_userCases.isEmpty 
+                      ? 'No tienes proyectos asignados'
+                      : 'No se encontraron proyectos')
+                    : 'No hay proyectos disponibles',
               style: const TextStyle(
                 fontSize: 18,
                 color: Colors.grey,
@@ -891,16 +725,30 @@ class _HomeState extends State<Home> {
               ),
               textAlign: TextAlign.center,
             ),
-            if (_searchQuery.isNotEmpty || _filterStatus != 'all') ...[
+            if (hasSearchQuery || hasFilterStatus) ...[
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () {
                   setState(() {
-                    _searchQuery = '';
-                    _filterStatus = 'all';
+                    if (isForUserView) {
+                      _userSearchQuery = '';
+                      _userFilterStatus = 'all';
+                    } else {
+                      _searchQuery = '';
+                      _filterStatus = 'all';
+                    }
                   });
                 },
                 child: const Text('Limpiar filtros'),
+              ),
+            ] else if (isForUserView && _userCases.isEmpty) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Los proyectos asignados a ti aparecerán aquí',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
               ),
             ],
           ],
@@ -909,35 +757,70 @@ class _HomeState extends State<Home> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filteredCases.length,
+      padding: isForUserView ? EdgeInsets.zero : const EdgeInsets.all(16),
+      itemCount: items.length,
       itemBuilder: (context, index) {
-        final caseData = filteredCases[index];
-        return _buildProjectCard(caseData);
+        if (isForUserView) {
+          final caseModel = items[index] as CaseModel;
+          return _buildUnifiedProjectCard(
+            projectName: caseModel.name,
+            userEmail: null,
+            createdAt: caseModel.createdAt ?? DateTime.now(),
+            approved: caseModel.approved,
+            onTap: () {
+              context.go(
+                '/analysis/${Uri.encodeComponent(caseModel.name)}?serenityId=${Uri.encodeComponent(caseModel.serenityId)}',
+              );
+            },
+            isForUserView: true,
+          );
+        } else {
+          final caseData = items[index] as Map<String, dynamic>;
+          return _buildUnifiedProjectCard(
+            projectName: caseData['name']?.toString() ?? 'Proyecto sin nombre',
+            userEmail: (caseData['user_id'] as Map<String, dynamic>)['email']?.toString(),
+            createdAt: DateTime.tryParse(caseData['created_at']?.toString() ?? '') ?? DateTime.now(),
+            approved: caseData['approved'],
+            onTap: () {
+              final caseName = caseData['name']?.toString() ?? 'Proyecto sin nombre';
+              final serenityId = caseData['serenity_id']?.toString();
+              final caseId = caseData['id']?.toString();
+              
+              String url = '/supervisor-review/${Uri.encodeComponent(caseName)}';
+              List<String> queryParams = [];
+              if (serenityId != null) {
+                queryParams.add('serenityId=${Uri.encodeComponent(serenityId)}');
+              }
+              if (caseId != null) {
+                queryParams.add('caseId=${Uri.encodeComponent(caseId)}');
+              }
+              if (queryParams.isNotEmpty) {
+                url += '?${queryParams.join('&')}';
+              }
+              context.go(url);
+            },
+            isForUserView: false,
+          );
+        }
       },
     );
   }
 
-  Widget _buildProjectCard(Map<String, dynamic> caseData) {
-  final caseName = caseData['name']?.toString() ?? 'Proyecto sin nombre';
-
-  final userInfo = caseData['user_id'] as Map<String, dynamic>;
-  final userName = userInfo['email']?.toString() ?? 'Usuario desconocido';
-  final userEmail = userInfo['email']?.toString() ?? '';
-    final createdAt =
-        DateTime.tryParse(caseData['created_at']?.toString() ?? '') ??
-        DateTime.now();
-    final serenityId = caseData['serenity_id']?.toString();
-    final caseId = caseData['id']?.toString();
-    final approved = caseData['approved']; // null, true, o false
-
+  Widget _buildUnifiedProjectCard({
+    required String projectName,
+    String? userEmail,
+    required DateTime createdAt,
+    required bool? approved,
+    required VoidCallback onTap,
+    bool isForUserView = false,
+  }) {
     // Estado basado en el valor del campo approved
     String status;
     Color statusColor;
     IconData statusIcon;
 
     if (approved == null) {
-      status = 'Pendiente de revisión';
+      status = isForUserView ? 'En proceso' : 'Pendiente de revisión';
       statusColor = Colors.orange;
       statusIcon = Icons.pending;
     } else if (approved == true) {
@@ -945,7 +828,7 @@ class _HomeState extends State<Home> {
       statusColor = Colors.green;
       statusIcon = Icons.check_circle;
     } else {
-      status = 'Rechazado';
+      status = isForUserView ? 'Desaprobado' : 'Rechazado';
       statusColor = Colors.red;
       statusIcon = Icons.cancel;
     }
@@ -965,147 +848,222 @@ class _HomeState extends State<Home> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      child: isForUserView
+          ? _buildUserViewCard(projectName, status, statusColor, statusIcon, onTap, createdAt)
+          : _buildSupervisorViewCard(projectName, userEmail, createdAt, status, statusColor, statusIcon, onTap),
+    );
+  }
+
+  Widget _buildUserViewCard(String projectName, String status, Color statusColor, IconData statusIcon, VoidCallback onTap, DateTime createdAt) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    projectName,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF004B93),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
                     children: [
+                      const Icon(
+                        Icons.schedule,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
                       Text(
-                        caseName,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF004B93),
+                        _formatDate(createdAt),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.person,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            userName,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (userEmail.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            Text(
-                              '($userEmail)',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.schedule,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDate(createdAt),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
-                ),
-                Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: statusColor.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(statusIcon, size: 16, color: statusColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            status,
-                            style: TextStyle(
-                              color: statusColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
-
-            const SizedBox(height: 16),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Column(
               children: [
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    String url =
-                        '/supervisor-review/${Uri.encodeComponent(caseName)}';
-                    List<String> queryParams = [];
-                    if (serenityId != null) {
-                      queryParams.add(
-                        'serenityId=${Uri.encodeComponent(serenityId)}',
-                      );
-                    }
-                    if (caseId != null) {
-                      queryParams.add('caseId=${Uri.encodeComponent(caseId)}');
-                    }
-                    if (queryParams.isNotEmpty) {
-                      url += '?${queryParams.join('&')}';
-                    }
-                    context.go(url);
-                  },
-                  icon: const Icon(Icons.rate_review, size: 16),
-                  label: const Text('Revisar'),
-                  style: ElevatedButton.styleFrom(
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    backgroundColor: const Color(0xFF004B93),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    minimumSize: const Size(140, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 16, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ],
         ),
-      );
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            ElevatedButton.icon(
+              onPressed: onTap,
+              icon: const Icon(Icons.visibility, size: 16),
+              label: const Text('Ver detalles'),
+              style: ElevatedButton.styleFrom(
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                backgroundColor: const Color(0xFF004B93),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                minimumSize: const Size(140, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSupervisorViewCard(String projectName, String? userEmail, DateTime createdAt, String status, Color statusColor, IconData statusIcon, VoidCallback onTap) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    projectName,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF004B93),
+                    ),
+                  ),
+                  if (userEmail != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.person,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          userEmail,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.schedule,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatDate(createdAt),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 16, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            ElevatedButton.icon(
+              onPressed: onTap,
+              icon: const Icon(Icons.rate_review, size: 16),
+              label: const Text('Revisar'),
+              style: ElevatedButton.styleFrom(
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                backgroundColor: const Color(0xFF004B93),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                minimumSize: const Size(140, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -1113,41 +1071,4 @@ class _HomeState extends State<Home> {
   }
 }
 
-// Widget fila de proyecto
-Widget _projectRow(
-  String nombre,
-  String estado,
-  Color color,
-  BuildContext context,
-  CaseModel caseModel,
-) {
-  return Card(
-    margin: const EdgeInsets.symmetric(vertical: 6),
-    child: ListTile(
-      title: Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              estado,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-      trailing: TextButton(
-        onPressed: () {
-          context.go(
-            '/analysis/${Uri.encodeComponent(nombre)}?serenityId=${Uri.encodeComponent(caseModel.serenityId)}',
-          );
-        },
-        child: const Text("Ver detalles"),
-      ),
-    ),
-  );
-}
+
