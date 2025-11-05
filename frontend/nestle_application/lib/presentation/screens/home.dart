@@ -9,6 +9,7 @@ import '../../models/user_model.dart';
 import '../widgets/filter_controls.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/unified_project_card.dart';
+import '../widgets/statistics_panel.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -293,7 +294,13 @@ class _HomeState extends State<Home> {
     return Column(
       children: [
         // Panel de estadísticas (solo para supervisores)
-        if (_isSupervisor) _buildStatisticsPanel(),
+        if (_isSupervisor)
+          StatisticsPanel(
+            totalCases: _allCasesWithUsers.length,
+            pendingCases: _allCasesWithUsers.where((c) => c['approved'] == null).length,
+            approvedCases: _allCasesWithUsers.where((c) => c['approved'] == true).length,
+            rejectedCases: _allCasesWithUsers.where((c) => c['approved'] == false).length,
+          ),
 
         // Controles de filtro y búsqueda
         _buildFilterControls(),
@@ -301,106 +308,6 @@ class _HomeState extends State<Home> {
         // Lista de casos
         Expanded(child: _buildProjectsList()),
       ],
-    );
-  }
-
-  Widget _buildStatisticsPanel() {
-    final totalCases = _allCasesWithUsers.length;
-    final pendingCases = _allCasesWithUsers.where((c) {
-      return c['approved'] == null; // null significa pendiente de revisión
-    }).length;
-    final approvedCases = _allCasesWithUsers.where((c) {
-      return c['approved'] == true; // true significa aprobado
-    }).length;
-    final rejectedCases = _allCasesWithUsers.where((c) {
-      return c['approved'] == false; // false significa rechazado
-    }).length;
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF004B93).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.dashboard,
-                  color: Color(0xFF004B93),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              const Text(
-                'Panel de Supervisión - Todos los Proyectos',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF004B93),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total',
-                  totalCases.toString(),
-                  Icons.folder,
-                  Colors.blue,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  'Pendientes',
-                  pendingCases.toString(),
-                  Icons.pending,
-                  Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  'Aprobados',
-                  approvedCases.toString(),
-                  Icons.check_circle,
-                  Colors.green,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  'Rechazados',
-                  rejectedCases.toString(),
-                  Icons.cancel,
-                  Colors.red,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
