@@ -76,12 +76,7 @@ class UserModel {
         return rol;
     }
   }
-
-  @override
-  String toString() {
-    return 'UserModel(id: $id, authUid: $authUid, email: $email, rol: $rol, createdAt: $createdAt)';
-  }
-
+  
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

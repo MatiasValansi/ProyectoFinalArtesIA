@@ -39,7 +39,10 @@ class _AnalysisResultState extends State<AnalysisResult> {
 
 
   Future<void> _loadAnalysisResultsFromDB() async {
+    print('AnalysisResult: _loadAnalysisResultsFromDB iniciado con serenityId: ${widget.serenityId}');
+    
     if (widget.serenityId == null) {
+      print('AnalysisResult: serenityId es null, terminando');
       setState(() {
         _isLoading = false;
         _analysisData = null;
@@ -175,10 +178,12 @@ class _AnalysisResultState extends State<AnalysisResult> {
         
         // Solo hacer setState si el widget está montado
         if (mounted) {
+          print('AnalysisResult: Actualizando estado con ${imageUrls.length} imágenes');
           setState(() {
             _isLoading = false;
-            _imageUrls = imageUrls;
-            _currentImageIndex = 0; // Resetear a la primera imagen
+            _imageUrls = imageUrls.reversed.toList(); // Invertir orden: más recientes primero
+            _currentImageIndex = 0; // La primera imagen ahora es la más reciente
+            print('AnalysisResult: URLs de imágenes: ${_imageUrls}');
             _analysisData = {
               'projectName': caseData['name'],
               'analysisDate': caseData['created_at'],
@@ -218,6 +223,31 @@ class _AnalysisResultState extends State<AnalysisResult> {
       }
     } catch (e) {
       print('Error al cerrar sesión: $e');
+    }
+  }
+
+  /// Callback que se ejecuta cada vez que la IA responde y actualiza la base de datos
+  Future<void> _handleAnalysisUpdate() async {
+    print('AnalysisResult: _handleAnalysisUpdate llamado');
+    
+    try {
+      // Recargar los datos desde la base de datos
+      print('AnalysisResult: Recargando datos desde la base de datos...');
+      await _loadAnalysisResultsFromDB();
+      
+      // Como las imágenes están invertidas, la primera imagen (índice 0) es siempre la más reciente
+      if (_imageUrls.isNotEmpty && mounted) {
+        print('AnalysisResult: Actualizando índice de imagen a 0 (${_imageUrls.length} imágenes disponibles)');
+        setState(() {
+          _currentImageIndex = 0; // Mostrar la primera imagen (más reciente)
+        });
+      } else {
+        print('AnalysisResult: No hay imágenes o widget no montado');
+      }
+      
+      print('AnalysisResult: _handleAnalysisUpdate completado');
+    } catch (e) {
+      print('AnalysisResult: Error en _handleAnalysisUpdate: $e');
     }
   }
 
@@ -350,6 +380,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                     projectName: widget.projectName,
                     analysisData: _analysisData,
                     caseSerenityId: widget.serenityId,
+                    onAnalysisUpdated: _handleAnalysisUpdate, // Agregar el callback
                   ),
                 ),
               ],

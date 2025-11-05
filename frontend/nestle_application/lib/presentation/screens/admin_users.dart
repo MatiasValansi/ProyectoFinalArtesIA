@@ -120,7 +120,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         return AlertDialog(
           title: const Text('Cambiar Rol'),
           content: DropdownButtonFormField<String>(
-            value: selectedRole,
+            initialValue: selectedRole,
             decoration: const InputDecoration(
               labelText: 'Nuevo rol',
               border: OutlineInputBorder(),
@@ -286,7 +286,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                             ),
                             const SizedBox(height: 15),
                             DropdownButtonFormField<String>(
-                              value: _selectedRole,
+                              initialValue: _selectedRole,
                               decoration: const InputDecoration(
                                 labelText: 'Rol',
                                 border: OutlineInputBorder(),
@@ -387,7 +387,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                         margin: const EdgeInsets.symmetric(vertical: 4),
                                         child: ListTile(
                                           leading: CircleAvatar(
-                                            backgroundColor: _getRoleColor(role).withOpacity(0.2),
+                                            backgroundColor: _getRoleColor(role).withAlpha((0.2 * 255).toInt()),
                                             child: Icon(
                                               _getRoleIcon(role),
                                               color: _getRoleColor(role),
@@ -406,7 +406,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                               vertical: 2,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: _getRoleColor(role).withOpacity(0.1),
+                                              color: _getRoleColor(role).withAlpha((0.1 * 255).toInt()),
                                               borderRadius: BorderRadius.circular(12),
                                             ),
                                             child: Text(

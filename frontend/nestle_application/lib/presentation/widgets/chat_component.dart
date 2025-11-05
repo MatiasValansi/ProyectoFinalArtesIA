@@ -875,6 +875,15 @@ class _ChatComponentState extends State<ChatComponent> {
         
         // Guardar solo los resultados del análisis (problemas, recomendaciones, score)
         await _saveAnalysisResults(data);
+        
+        // SIEMPRE notificar al componente padre que hubo una respuesta de la IA
+        print('ChatComponent: Notificando actualización al componente padre');
+        if (widget.onAnalysisUpdated != null) {
+          print('ChatComponent: Callback existe, ejecutando...');
+          widget.onAnalysisUpdated!();
+        } else {
+          print('ChatComponent: ERROR - No hay callback configurado');
+        }
       } else {
         throw Exception('Error del servidor: ${response.statusCode}');
       }
@@ -1010,15 +1019,6 @@ class _ChatComponentState extends State<ChatComponent> {
       // Actualizar el caso solo si hay datos para actualizar
       if (updateData.isNotEmpty) {
         await _casesService.client.from('cases').update(updateData).eq('id', caseId);
-        // Notificar al componente padre que los datos han sido actualizados
-        if (widget.onAnalysisUpdated != null && mounted) {
-          // Usar Future.microtask para asegurar que se ejecute después del frame actual
-          Future.microtask(() {
-            if (mounted && widget.onAnalysisUpdated != null) {
-              widget.onAnalysisUpdated!();
-            }
-          });
-        }
       }
       
     } catch (e) {

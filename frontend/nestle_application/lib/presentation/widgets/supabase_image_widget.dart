@@ -5,7 +5,6 @@ import '../../database/storage_service.dart';
 /// Maneja automáticamente URLs públicas y privadas
 class SupabaseImageWidget extends StatefulWidget {
   final String? imageUrl;
-  final String? imagePath; // Para bucket privado
   final double? width;
   final double? height;
   final BoxFit fit;
@@ -16,84 +15,47 @@ class SupabaseImageWidget extends StatefulWidget {
   const SupabaseImageWidget({
     super.key,
     this.imageUrl,
-    this.imagePath,
     this.width,
     this.height,
     this.fit = BoxFit.cover,
     this.placeholder,
     this.errorWidget,
     this.borderRadius,
-  }) : assert(imageUrl != null || imagePath != null, 
-              'Debe proporcionar imageUrl o imagePath');
+  }) : assert(imageUrl != null, 'Debe proporcionar imageUrl');
 
   @override
   State<SupabaseImageWidget> createState() => _SupabaseImageWidgetState();
 }
 
 class _SupabaseImageWidgetState extends State<SupabaseImageWidget> {
-  String? _signedUrl;
   bool _isLoading = true;
   bool _hasError = false;
-  final StorageService _storageService = StorageService();
 
   @override
   void initState() {
-    super.initState();
-    _loadImage();
+  super.initState();
+  _isLoading = false;
   }
 
   @override
   void didUpdateWidget(SupabaseImageWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl || 
-        oldWidget.imagePath != widget.imagePath) {
-      _loadImage();
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      setState(() {
+        _isLoading = false;
+        _hasError = false;
+      });
     }
   }
 
-  Future<void> _loadImage() async {
-    if (!mounted) return;
-    
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
-
-    try {
-      if (widget.imageUrl != null) {
-        // Si ya tenemos una URL pública, usarla directamente
-        _signedUrl = widget.imageUrl;
-      } else if (widget.imagePath != null) {
-        // Si tenemos un path, generar URL firmada para bucket privado
-        _signedUrl = await _storageService.getSignedUrl(
-          widget.imagePath!,
-          expiresIn: 3600, // 1 hora
-        );
-      }
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('Error al cargar imagen: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-        });
-      }
-    }
-  }
+  // Eliminado: _loadImage y lógica de URL firmada
 
   Widget _buildImage() {
-    if (_signedUrl == null) {
+    if (widget.imageUrl == null) {
       return _buildError();
     }
-
     return Image.network(
-      _signedUrl!,
+      widget.imageUrl!,
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
@@ -155,7 +117,7 @@ class _SupabaseImageWidgetState extends State<SupabaseImageWidget> {
 
     if (_isLoading) {
       child = _buildPlaceholder();
-    } else if (_hasError || _signedUrl == null) {
+    } else if (_hasError || widget.imageUrl == null) {
       child = _buildError();
     } else {
       child = _buildImage();
@@ -175,14 +137,12 @@ class _SupabaseImageWidgetState extends State<SupabaseImageWidget> {
 /// Widget helper para mostrar avatares de usuario
 class SupabaseAvatarWidget extends StatelessWidget {
   final String? imageUrl;
-  final String? imagePath;
   final double size;
   final String? initials;
 
   const SupabaseAvatarWidget({
     super.key,
     this.imageUrl,
-    this.imagePath,
     this.size = 40,
     this.initials,
   });
@@ -197,7 +157,6 @@ class SupabaseAvatarWidget extends StatelessWidget {
       ),
       child: SupabaseImageWidget(
         imageUrl: imageUrl,
-        imagePath: imagePath,
         width: size,
         height: size,
         fit: BoxFit.cover,

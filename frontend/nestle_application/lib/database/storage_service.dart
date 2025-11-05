@@ -94,51 +94,12 @@ class StorageService {
     return _client.storage.from(_bucketName).getPublicUrl(filePath);
   }
 
-  /// Obtener URL firmada (para buckets privados)
-  Future<String> getSignedUrl(String filePath, {int expiresIn = 3600}) async {
-    try {
-      return await _client.storage
-          .from(_bucketName)
-          .createSignedUrl(filePath, expiresIn);
-    } catch (e) {
-      throw Exception('Error al obtener URL firmada: $e');
-    }
-  }
-
   /// Eliminar imagen
   Future<void> deleteImage(String filePath) async {
     try {
       await _client.storage.from(_bucketName).remove([filePath]);
     } catch (e) {
       throw Exception('Error al eliminar imagen: $e');
-    }
-  }
-
-  /// Listar archivos en un directorio
-  Future<List<FileObject>> listFiles({String? prefix}) async {
-    try {
-      return await _client.storage
-          .from(_bucketName)
-          .list(path: prefix);
-    } catch (e) {
-      throw Exception('Error al listar archivos: $e');
-    }
-  }
-
-  /// Crear el bucket si no existe (solo para desarrollo)
-  Future<void> createBucketIfNotExists({bool isPublic = false}) async {
-    try {
-      await _client.storage.createBucket(
-        _bucketName,
-        BucketOptions(
-          public: isPublic,
-          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-          fileSizeLimit: '10MB',
-        ),
-      );
-    } catch (e) {
-      // El bucket ya existe o hay otro error
-      print('Info: El bucket puede que ya exista: $e');
     }
   }
 
@@ -166,25 +127,8 @@ class StorageService {
         return 'image/jpeg';
       case '.png':
         return 'image/png';
-      case '.gif':
-        return 'image/gif';
-      case '.webp':
-        return 'image/webp';
       default:
         return 'image/jpeg';
     }
-  }
-
-  /// Validar tamaño de archivo
-  bool isValidFileSize(int sizeInBytes, {int maxSizeMB = 10}) {
-    final int maxSizeBytes = maxSizeMB * 1024 * 1024;
-    return sizeInBytes <= maxSizeBytes;
-  }
-
-  /// Validar tipo de archivo
-  bool isValidImageType(String fileName) {
-    final String extension = path.extension(fileName).toLowerCase();
-    final List<String> allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    return allowedTypes.contains(extension);
   }
 }

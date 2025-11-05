@@ -39,24 +39,22 @@ class CaseModel {
       }
     }
 
-
-    
     return CaseModel(
       id: json['id']?.toString(),
       name: json['name'] ?? '',
       serenityId: json['serenity_id'] ?? '',
       userId: json['user_id'] ?? '',
       arteId: arteIdList,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at']) 
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
           : null,
       approved: json['approved'],
       totalImages: json['total_images']?.toInt(),
-      problems: json['problems'], // Ahora puede ser Map o List
+      problems: json['problems'],
       score: json['score']?.toDouble(),
-      recommendations: json['recommendations'], // Ahora puede ser String o List
-      imageUrls: json['image_urls'] != null 
-          ? List<String>.from(json['image_urls']) 
+      recommendations: json['recommendations'],
+      imageUrls: json['image_urls'] != null
+          ? List<String>.from(json['image_urls'])
           : null,
     );
   }
@@ -68,7 +66,7 @@ class CaseModel {
       'name': name,
       'serenity_id': serenityId,
       'user_id': userId,
-      'arte_id': arteId, // Ya es una lista, se serializa correctamente
+      'arte_id': arteId,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (approved != null) 'approved': approved,
       if (problems != null) 'problems': problems,
@@ -78,7 +76,6 @@ class CaseModel {
     };
   }
 
-  /// Crear una copia de la instancia con algunos campos modificados
   CaseModel copyWith({
     String? id,
     String? name,
@@ -111,29 +108,24 @@ class CaseModel {
   }
 
   @override
-  String toString() {
-    return 'CaseModel(id: $id, name: $name, serenityId: $serenityId, userId: $userId, arteId: $arteId, createdAt: $createdAt, approved: $approved, totalImages: $totalImages, problems: $problems, score: $score, recommendations: $recommendations)';
-  }
-
-  @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-  
+
     return other is CaseModel &&
-      other.id == id &&
-      other.name == name &&
-      other.serenityId == serenityId &&
-      other.userId == userId &&
-      _listEquals(other.arteId, arteId) &&
-      other.createdAt == createdAt &&
-      other.approved == approved &&
-      other.totalImages == totalImages &&
-      _dynamicEquals(other.problems, problems) &&
-      other.score == score &&
-      _dynamicEquals(other.recommendations, recommendations);
+        other.id == id &&
+        other.name == name &&
+        other.serenityId == serenityId &&
+        other.userId == userId &&
+        _listEquals(other.arteId, arteId) &&
+        other.createdAt == createdAt &&
+        other.approved == approved &&
+        other.totalImages == totalImages &&
+        _dynamicEquals(other.problems, problems) &&
+        other.score == score &&
+        _dynamicEquals(other.recommendations, recommendations);
   }
 
-  /// Helper method to compare lists
+  /// Metodo auxiliar para comparar listas
   bool _listEquals<T>(List<T>? a, List<T>? b) {
     if (a == null) return b == null;
     if (b == null || a.length != b.length) return false;
@@ -143,16 +135,16 @@ class CaseModel {
     return true;
   }
 
-  /// Helper method to compare dynamic values (can be Map, List, String, etc.)
+  /// Metodo auxiliar para comparar valores dinámicos (puede ser Map, List, String, etc.)
   bool _dynamicEquals(dynamic a, dynamic b) {
     if (a == null) return b == null;
     if (b == null) return false;
-    
+
     // Si ambos son del mismo tipo, usar comparación directa
     if (a.runtimeType == b.runtimeType) {
       return a.toString() == b.toString();
     }
-    
+
     // Para tipos diferentes, comparar como string
     return a.toString() == b.toString();
   }
@@ -160,15 +152,15 @@ class CaseModel {
   @override
   int get hashCode {
     return id.hashCode ^
-      name.hashCode ^
-      serenityId.hashCode ^
-      userId.hashCode ^
-      Object.hashAll(arteId) ^
-      createdAt.hashCode ^
-      approved.hashCode ^
-      totalImages.hashCode ^
-      (problems?.hashCode ?? 0) ^
-      score.hashCode ^
-      (recommendations?.hashCode ?? 0);
+        name.hashCode ^
+        serenityId.hashCode ^
+        userId.hashCode ^
+        Object.hashAll(arteId) ^
+        createdAt.hashCode ^
+        approved.hashCode ^
+        totalImages.hashCode ^
+        (problems?.hashCode ?? 0) ^
+        score.hashCode ^
+        (recommendations?.hashCode ?? 0);
   }
 }
