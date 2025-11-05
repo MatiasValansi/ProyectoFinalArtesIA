@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/controllers/cases_controller.dart';
+import '../../core/controllers/role_controller.dart';
+import '../../core/controllers/user_controller.dart';
 import '../../database/cases_service.dart';
 import '../../database/user_service.dart';
 import '../../models/case_model.dart';
@@ -19,9 +21,9 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  final AuthService _authService = AuthService();
-  final CasesService _casesService = CasesService();
-  final UserService _userService = UserService();
+  final UserController _userController = UserController(UserService());
+  final RoleController _roleController = RoleController(AuthService());
+  final CasesController _casesController = CasesController(CasesService());
 
   bool _isAdmin = false;
   bool _isSupervisor = false;
@@ -44,12 +46,31 @@ class _HomeState extends State<Home> {
 
   Future<void> _initializeHomeData() async {
     try {
-      await _getUserInfo();
-      await _checkUserRole();
+      final user = await _userController.getUserInfo();
+      if (user != null) {
+        setState(() {
+          _currentUser = user;
+          _userEmail = user.email;
+        });
+      }
+
+      final roleData = await _roleController.getUserRole();
+      setState(() {
+        _isAdmin = roleData['isAdmin'];
+        _isSupervisor = roleData['isSupervisor'];
+        _userRole = roleData['role'];
+      });
+
       if (_isSupervisor) {
-        await _loadAllCasesForSupervisor();
-      } else {
-        await _loadUserCases();
+        final cases = await _casesController.getAllCasesForSupervisor();
+        setState(() {
+          _allCasesWithUsers = cases;
+        });
+      } else if (_currentUser != null) {
+        final userCases = await _casesController.getUserCases(_currentUser!.id!);
+        setState(() {
+          _userCases = userCases;
+        });
       }
     } catch (e) {
       print('Error inicializando datos del home: $e');
@@ -62,105 +83,10 @@ class _HomeState extends State<Home> {
     }
   }
 
-  Future<void> _getUserInfo() async {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    if (firebaseUser != null && firebaseUser.uid.isNotEmpty) {
-      try {
-        // Obtener el usuario de Supabase usando el authUid de Firebase
-        final user = await _userService.getUserByAuthUidAsModel(
-          firebaseUser.uid,
-        );
-        if (mounted && user != null) {
-          setState(() {
-            _currentUser = user;
-            _userEmail = user.email;
-          });
-        }
-      } catch (e) {
-        print('Error obteniendo información del usuario: $e');
-        // Fallback al email de Firebase si hay error
-        if (mounted) {
-          setState(() {
-            _userEmail = firebaseUser.email ?? 'Usuario';
-          });
-        }
-      }
-    }
-  }
-
-  Future<void> _checkUserRole() async {
-    try {
-      final isAdmin = await _authService.isCurrentUserAdmin();
-      final isSupervisor = await _authService.isCurrentUserSupervisor();
-      final role = await _authService.getCurrentUserRole();
-      if (mounted) {
-        setState(() {
-          _isAdmin = isAdmin;
-          _isSupervisor = isSupervisor;
-          _userRole = role ?? '';
-        });
-      }
-    } catch (e) {
-      print('Error obteniendo rol del usuario: $e');
-    }
-  }
-
-  Future<void> _loadUserCases() async {
-    if (_currentUser?.id == null) return;
-
-    try {
-      final casesData = await _casesService.getCasesByUser(_currentUser!.id!);
-      final cases = casesData.map((json) => CaseModel.fromJson(json)).toList();
-
-      if (mounted) {
-        setState(() {
-          _userCases = cases;
-        });
-      }
-    } catch (e) {
-      print('Error cargando casos del usuario: $e');
-    }
-  }
-
-  Future<void> _loadAllCasesForSupervisor() async {
-    try {
-      final casesData = await _casesService.getAllCasesWithUserInfo();
-      if (mounted) {
-        setState(() {
-          _allCasesWithUsers = casesData;
-        });
-      }
-    } catch (e) {
-      print('Error cargando casos para supervisor: $e');
-      // En caso de error, usar método alternativo
-      try {
-        final casesData = await _casesService.getAllCases();
-        if (mounted) {
-          setState(() {
-            _allCasesWithUsers = casesData.map((caseData) {
-              // Agregar información básica del usuario si no está disponible
-              return {
-                ...caseData,
-                'user_id': {
-                  'id': caseData['user_id']?.toString() ?? 'unknown',
-                  'email': 'usuario@empresa.com',
-                  'rol': 'user',
-                },
-              };
-            }).toList();
-          });
-        }
-      } catch (fallbackError) {
-        print('Error en método alternativo: $fallbackError');
-      }
-    }
-  }
-
   Future<void> _handleLogout() async {
     try {
-      await _authService.signOut();
+      await _roleController.signOut(); // Usar el controlador para cerrar sesión
       if (mounted) {
-        // Usar pushReplacement para evitar que el usuario pueda volver
         context.pushReplacement('/login');
       }
     } catch (e) {
@@ -308,50 +234,6 @@ class _HomeState extends State<Home> {
         // Lista de casos
         Expanded(child: _buildProjectsList()),
       ],
-    );
-  }
-
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 24),
-              const Spacer(),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
