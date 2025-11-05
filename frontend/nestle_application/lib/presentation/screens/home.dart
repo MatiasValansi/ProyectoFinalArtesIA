@@ -732,6 +732,7 @@ class _HomeState extends State<Home> {
 
   Widget _buildProjectCard(Map<String, dynamic> caseData) {
   final caseName = caseData['name']?.toString() ?? 'Proyecto sin nombre';
+
   final userInfo = caseData['user_id'] as Map<String, dynamic>;
   final userName = userInfo['email']?.toString() ?? 'Usuario desconocido';
   final userEmail = userInfo['email']?.toString() ?? '';
@@ -788,7 +789,7 @@ class _HomeState extends State<Home> {
                       Text(
                         caseName,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF004B93),
                         ),
@@ -902,8 +903,14 @@ class _HomeState extends State<Home> {
                   icon: const Icon(Icons.rate_review, size: 16),
                   label: const Text('Revisar'),
                   style: ElevatedButton.styleFrom(
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     backgroundColor: const Color(0xFF004B93),
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    minimumSize: const Size(140, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                  ),
                   ),
                 ),
               ],
