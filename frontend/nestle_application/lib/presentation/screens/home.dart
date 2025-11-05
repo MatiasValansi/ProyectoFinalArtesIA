@@ -29,6 +29,8 @@ class _HomeState extends State<Home> {
   UserModel? _currentUser;
   String _searchQuery = '';
   String _filterStatus = 'all';
+  String _userSearchQuery = '';
+  String _userFilterStatus = 'all';
 
   @override
   void initState() {
@@ -282,41 +284,68 @@ class _HomeState extends State<Home> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                
+                // Controles de filtro para usuarios
+                if (_userCases.isNotEmpty) ...[
+                  _buildUserFilterControls(),
+                  const SizedBox(height: 16),
+                ],
+                
                 Expanded(
-                  child: _userCases.isEmpty
+                  child: _filteredUserCases.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.folder_open,
+                                _userSearchQuery.isNotEmpty || _userFilterStatus != 'all'
+                                    ? Icons.search_off
+                                    : Icons.folder_open,
                                 size: 64,
                                 color: Colors.grey,
                               ),
                               SizedBox(height: 16),
                               Text(
-                                'No tienes proyectos asignados',
+                                _userSearchQuery.isNotEmpty || _userFilterStatus != 'all'
+                                    ? 'No se encontraron proyectos con los filtros aplicados'
+                                    : _userCases.isEmpty 
+                                        ? 'No tienes proyectos asignados'
+                                        : 'No se encontraron proyectos',
                                 style: TextStyle(
                                   fontSize: 18,
                                   color: Colors.grey,
                                   fontWeight: FontWeight.w500,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Los proyectos asignados a ti aparecerán aquí',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
+                              if (_userSearchQuery.isNotEmpty || _userFilterStatus != 'all') ...[
+                                const SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _userSearchQuery = '';
+                                      _userFilterStatus = 'all';
+                                    });
+                                  },
+                                  child: const Text('Limpiar filtros'),
                                 ),
-                              ),
+                              ] else if (_userCases.isEmpty) ...[
+                                SizedBox(height: 8),
+                                Text(
+                                  'Los proyectos asignados a ti aparecerán aquí',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         )
                       : ListView.builder(
-                          itemCount: _userCases.length,
+                          itemCount: _filteredUserCases.length,
                           itemBuilder: (context, index) {
-                            final caseModel = _userCases[index];
+                            final caseModel = _filteredUserCases[index];
                             String estado;
                             Color color;
                             if (caseModel.approved == null) {
@@ -630,6 +659,129 @@ class _HomeState extends State<Home> {
     );
   }
 
+  Widget _buildUserFilterControls() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Búsqueda
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: TextField(
+              onChanged: (value) {
+                setState(() {
+                  _userSearchQuery = value;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Buscar por nombre del proyecto...',
+                hintStyle: TextStyle(color: Colors.grey[500]),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16, 
+                  vertical: 16,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Filtros de estado
+          Row(
+            children: [
+              Text(
+                'Estado:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildUserFilterChip('Todos', 'all'),
+                      const SizedBox(width: 8),
+                      _buildUserFilterChip('En proceso', 'pending'),
+                      const SizedBox(width: 8),
+                      _buildUserFilterChip('Aprobados', 'approved'),
+                      const SizedBox(width: 8),
+                      _buildUserFilterChip('Rechazados', 'rejected'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserFilterChip(String label, String value) {
+    final isSelected = _userFilterStatus == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _userFilterStatus = value;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+            ? const Color(0xFF004B93) 
+            : Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected 
+              ? const Color(0xFF004B93) 
+              : Colors.grey[300]!,
+            width: 1,
+          ),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: const Color(0xFF004B93).withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ] : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[700],
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
   List<Map<String, dynamic>> get _filteredCases {
     var filtered = _allCasesWithUsers.where((caseData) {
       // Filtro por búsqueda
@@ -670,6 +822,42 @@ class _HomeState extends State<Home> {
       final dateB =
           DateTime.tryParse(b['created_at']?.toString() ?? '') ??
           DateTime.now();
+      return dateB.compareTo(dateA);
+    });
+
+    return filtered;
+  }
+
+  List<CaseModel> get _filteredUserCases {
+    var filtered = _userCases.where((caseModel) {
+      // Filtro por búsqueda en nombre del proyecto
+      if (_userSearchQuery.isNotEmpty) {
+        final caseName = caseModel.name.toLowerCase();
+        if (!caseName.contains(_userSearchQuery.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Filtro por estado usando el campo approved
+      if (_userFilterStatus != 'all') {
+        final approved = caseModel.approved;
+        switch (_userFilterStatus) {
+          case 'pending':
+            return approved == null;
+          case 'approved':
+            return approved == true;
+          case 'rejected':
+            return approved == false;
+        }
+      }
+
+      return true;
+    }).toList();
+
+    // Ordenar por fecha de creación (más recientes primero)
+    filtered.sort((a, b) {
+      final dateA = a.createdAt ?? DateTime.now();
+      final dateB = b.createdAt ?? DateTime.now();
       return dateB.compareTo(dateA);
     });
 
@@ -732,6 +920,7 @@ class _HomeState extends State<Home> {
 
   Widget _buildProjectCard(Map<String, dynamic> caseData) {
   final caseName = caseData['name']?.toString() ?? 'Proyecto sin nombre';
+
   final userInfo = caseData['user_id'] as Map<String, dynamic>;
   final userName = userInfo['email']?.toString() ?? 'Usuario desconocido';
   final userEmail = userInfo['email']?.toString() ?? '';
@@ -788,7 +977,7 @@ class _HomeState extends State<Home> {
                       Text(
                         caseName,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF004B93),
                         ),
@@ -902,8 +1091,14 @@ class _HomeState extends State<Home> {
                   icon: const Icon(Icons.rate_review, size: 16),
                   label: const Text('Revisar'),
                   style: ElevatedButton.styleFrom(
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     backgroundColor: const Color(0xFF004B93),
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    minimumSize: const Size(140, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                  ),
                   ),
                 ),
               ],
