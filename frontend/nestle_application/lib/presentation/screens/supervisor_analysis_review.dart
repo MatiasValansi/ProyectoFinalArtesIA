@@ -86,8 +86,6 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   Map<String, dynamic>? _adaptCaseData(Map<String, dynamic>? caseData) {
     if (caseData == null) return null;
     
-    print('DEBUG: Datos del caso recibidos: $caseData');
-    print('DEBUG: image_urls en caso: ${caseData['image_urls']}');
     
     final userInfo = caseData['user_id'];
     return {
@@ -118,7 +116,6 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
       if (imageUrls != null && imageUrls.isNotEmpty) {
         // Tomar la primera URL (la más reciente si se está guardando en orden)
         _selectedImageUrl = imageUrls.first.toString();
-        print('DEBUG: Imagen seleccionada desde image_urls: $_selectedImageUrl');
         return;
       }
     }

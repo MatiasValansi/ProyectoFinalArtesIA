@@ -180,6 +180,7 @@ class _ChatComponentState extends State<ChatComponent> {
                         // Info de la imagen
                         Row(
                           children: [
+                            // Status icon
                             if (_isUploadingFile)
                               const SizedBox(
                                 width: 20,
@@ -210,48 +211,7 @@ class _ChatComponentState extends State<ChatComponent> {
                                 size: 20,
                               ),
                             const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _selectedImage!.name,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[700],
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (_isUploadingFile)
-                                    Text(
-                                      _imageStatus.isEmpty ? 'Subiendo archivo...' : _imageStatus,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[500],
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    )
-                                  else if (_volatileKnowledgeId != null)
-                                    Text(
-                                      '✓ Guardado y listo para análisis',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.green[600],
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    )
-                                  else
-                                    Text(
-                                      'Toque para subir archivo',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
+                            Spacer(),
                             if (!_isUploadingFile)
                               IconButton(
                                 icon: const Icon(Icons.close, size: 18),
@@ -658,17 +618,7 @@ class _ChatComponentState extends State<ChatComponent> {
         _imageStatus = 'Preparando para análisis IA...';
       });
       
-      _volatileKnowledgeId = await serenityService.uploadImageToVolatileKnowledge(
-        _selectedImage!,
-        onStatusUpdate: (status) {
-          // Actualizar el estado mostrado al usuario
-          if (mounted) {
-            setState(() {
-              _imageStatus = status;
-            });
-          }
-        },
-      );
+      _volatileKnowledgeId = await serenityService.uploadImage(_selectedImage!);
       
       // 4. Guardar inmediatamente el ID en la base de datos con URL de Supabase
       if (_volatileKnowledgeId != null) {
@@ -728,11 +678,6 @@ class _ChatComponentState extends State<ChatComponent> {
       final currentArteId = cases.first['arte_id'] as List<dynamic>? ?? [];
       final currentImageUrls = cases.first['image_urls'] as List<dynamic>? ?? [];
       
-      print('💾 Estado actual del caso:');
-      print('💾 - Arte IDs: $currentArteId');
-      print('💾 - Image URLs: $currentImageUrls');
-      print('💾 - Nuevo volatileKnowledgeId: $volatileKnowledgeId');
-      print('💾 - Nueva supabaseImageUrl: $supabaseImageUrl');
       
       // Solo agregar si no está ya en el array (evitar duplicados)
       if (!currentArteId.contains(volatileKnowledgeId)) {
@@ -742,23 +687,11 @@ class _ChatComponentState extends State<ChatComponent> {
         // Agregar la URL de Supabase al array si se proporciona
         if (supabaseImageUrl != null && !newImageUrls.contains(supabaseImageUrl)) {
           newImageUrls.add(supabaseImageUrl);
-          print('💾 ✓ Nueva URL agregada al array');
-        } else {
-          print('💾 ⚠️ URL no agregada - null o ya existe');
         }
-        
-        print('💾 Actualizando caso con:');
-        print('💾 - Nuevos Arte IDs: $newArteId');
-        print('💾 - Nuevas URLs: $newImageUrls');
-        
         await _casesService.client.from('cases').update({
           'arte_id': newArteId,
           'image_urls': newImageUrls,
         }).eq('id', caseId);
-        
-        print('💾 ✓ Caso actualizado exitosamente');
-      } else {
-        print('💾 ⚠️ volatileKnowledgeId ya existe, no se agrega');
       }
       
     } catch (e) {
@@ -796,7 +729,6 @@ class _ChatComponentState extends State<ChatComponent> {
           newImageUrls.removeAt(arteIndex);
         }
         
-        print('🗑️ Removiendo imagen del caso, nuevas URLs: $newImageUrls');
         
         await _casesService.client.from('cases').update({
           'arte_id': newArteId,
@@ -1077,24 +1009,16 @@ class _ChatComponentState extends State<ChatComponent> {
       
       // Actualizar el caso solo si hay datos para actualizar
       if (updateData.isNotEmpty) {
-        print('🔄 Actualizando caso en BD con datos: $updateData');
         await _casesService.client.from('cases').update(updateData).eq('id', caseId);
-        
         // Notificar al componente padre que los datos han sido actualizados
-        print('🔄 Notificando actualización al componente padre...');
         if (widget.onAnalysisUpdated != null && mounted) {
           // Usar Future.microtask para asegurar que se ejecute después del frame actual
           Future.microtask(() {
             if (mounted && widget.onAnalysisUpdated != null) {
               widget.onAnalysisUpdated!();
-              print('🔄 Callback ejecutado exitosamente');
             }
           });
-        } else {
-          print('❌ No hay callback configurado o widget no montado');
         }
-      } else {
-        print('📝 No hay datos para actualizar');
       }
       
     } catch (e) {

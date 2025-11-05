@@ -317,10 +317,22 @@ class _HomeState extends State<Home> {
                           itemCount: _userCases.length,
                           itemBuilder: (context, index) {
                             final caseModel = _userCases[index];
+                            String estado;
+                            Color color;
+                            if (caseModel.approved == null) {
+                              estado = "En proceso";
+                              color = Colors.amber;
+                            } else if (caseModel.approved == true) {
+                              estado = "Aprobado";
+                              color = Colors.green;
+                            } else {
+                              estado = "Desaprobado";
+                              color = Colors.red;
+                            }
                             return _projectRow(
                               caseModel.name,
-                              (caseModel.approved ?? false) ? "Aprobado" : "desaprobado",
-                              (caseModel.approved ?? false) ? Colors.green : Colors.red,
+                              estado,
+                              color,
                               context,
                               caseModel,
                             );
@@ -868,21 +880,6 @@ class _HomeState extends State<Home> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                OutlinedButton.icon(
-                  onPressed: () {
-                    String url = '/analysis/${Uri.encodeComponent(caseName)}';
-                    if (serenityId != null) {
-                      url += '?serenityId=${Uri.encodeComponent(serenityId)}';
-                    }
-                    context.go(url);
-                  },
-                  icon: const Icon(Icons.analytics, size: 16),
-                  label: const Text('Ver análisis'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF004B93),
-                    side: const BorderSide(color: Color(0xFF004B93)),
-                  ),
-                ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {

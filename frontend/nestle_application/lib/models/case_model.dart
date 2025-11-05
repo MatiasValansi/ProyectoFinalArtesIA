@@ -7,10 +7,10 @@ class CaseModel {
   final DateTime? createdAt;
   final bool? approved;
   final int? totalImages;
-  final dynamic problems; // Cambiado para soportar tanto Map como List
+  final dynamic problems;
   final double? score;
-  final dynamic recommendations; // Cambiado para soportar tanto String como List
-  final List<String>? imageUrls; // URLs de las imágenes en Supabase Storage
+  final dynamic recommendations;
+  final List<String>? imageUrls;
 
   CaseModel({
     this.id,

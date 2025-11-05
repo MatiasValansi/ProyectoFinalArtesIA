@@ -46,7 +46,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
       });
       return;
     }
-    print('📊 Cargando análisis desde DB para serenityId: ${widget.serenityId}');
     try {
       final cases = await _casesService.getCasesBySerenityId(widget.serenityId!);
       if (cases.isNotEmpty) {
@@ -149,42 +148,30 @@ class _AnalysisResultState extends State<AnalysisResult> {
         // Obtener URLs de las imágenes desde el campo image_urls
         List<String> imageUrls = [];
         
-        // Debug: imprimir todos los campos disponibles
-        print('📊 Campos disponibles en caseData: ${caseData.keys.toList()}');
         
         // Usar image_urls en lugar de arte_id para las URLs de las imágenes
         if (caseData['image_urls'] != null) {
           final imageUrlsData = caseData['image_urls'];
-          print('📷 Image URLs encontradas (${imageUrlsData.runtimeType}): $imageUrlsData');
           
           if (imageUrlsData is List) {
-            print('📷 Procesando lista de ${imageUrlsData.length} URLs...');
             for (int i = 0; i < imageUrlsData.length; i++) {
               final url = imageUrlsData[i];
               if (url is String && url.isNotEmpty) {
                 imageUrls.add(url);
-                print('📷 URL [$i] agregada: $url');
               } else {
-                print('📷 URL [$i] ignorada (vacía o no string): $url');
               }
             }
           } else {
-            print('📷 ⚠️ image_urls no es una lista: ${imageUrlsData.runtimeType}');
           }
         } else {
-          print('📷 No se encontraron image_urls en la base de datos');
           // Intentar con otros nombres posibles
           final possibleKeys = ['imageUrls', 'imageurl', 'image_url', 'urls'];
           for (final key in possibleKeys) {
             if (caseData[key] != null) {
-              print('📷 Encontrado campo alternativo: $key = ${caseData[key]}');
             }
           }
         }
         
-        print('📷 Total de URLs procesadas: ${imageUrls.length}');
-
-        print('📊 Datos procesados: ${issuesList.length} problemas, ${recommendationsList.length} recomendaciones, ${imageUrls.length} imágenes');
         
         // Solo hacer setState si el widget está montado
         if (mounted) {
@@ -222,21 +209,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
     }
   }
 
-  /// Callback que se ejecuta cuando el chat actualiza el análisis
-  void _onAnalysisUpdated() {
-    print('📊 ¡Callback _onAnalysisUpdated ejecutado!');
-    if (mounted) {
-      // Pequeño delay para asegurar que la BD se haya actualizado
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          // No mostrar loading, solo recargar datos silenciosamente
-          _loadAnalysisResultsFromDB();
-        }
-      });
-    } else {
-      print('📊 Widget no montado, no se puede actualizar');
-    }
-  }
 
   Future<void> _handleLogout() async {
     try {
@@ -378,7 +350,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
                     projectName: widget.projectName,
                     analysisData: _analysisData,
                     caseSerenityId: widget.serenityId,
-                    onAnalysisUpdated: _onAnalysisUpdated, // Añadir el callback
                   ),
                 ),
               ],
@@ -589,10 +560,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                   } : null,
                   icon: const Icon(Icons.arrow_back_ios),
                 ),
-              Text(
-                _imageUrls.length > 1 
-                    ? 'Imagen ${_currentImageIndex + 1} de ${_imageUrls.length}'
-                    : 'Imagen de Muestra',
+              Text( 'Imágenes',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: const Color(0xFF004B93),
                   fontWeight: FontWeight.bold,
@@ -619,7 +587,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                       fit: BoxFit.contain,
                       width: double.infinity,
                       errorBuilder: (context, error, stackTrace) {
-                        print('❌ Error cargando imagen: $error');
+                        print('Error cargando imagen: $error');
                         return Container(
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
@@ -690,34 +658,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
                       ),
                     ),
                   ),
-          ),
-          // Información de debug y múltiples imágenes
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Column(
-              children: [
-                if (_imageUrls.length > 1)
-                  Text(
-                    '${_imageUrls.length} imágenes disponibles',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                if (_imageUrls.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Debug: ${_imageUrls[_currentImageIndex]}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[500],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-              ],
-            ),
           ),
         ],
       ),

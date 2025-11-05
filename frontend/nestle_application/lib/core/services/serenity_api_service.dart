@@ -52,112 +52,68 @@ class SerenityApiService {
     throw Exception('Error inesperado al inicializar chat');
   }
 
-  /// Subir imagen como volatile knowledge y obtener ID inmediatamente
-  Future<String> uploadImageToVolatileKnowledge(
-    html.File file,
-    {Function(String)? onStatusUpdate}
-  ) async {
+  /// Subir imagen
+  Future<String> uploadImage(html.File file) async {
     int maxRetries = 3;
     int currentRetry = 0;
-    
+
     while (currentRetry < maxRetries) {
       try {
-        print('=== UPLOAD ATTEMPT ${currentRetry + 1} ===');
-        print('URL: ${AppConfig.volatileKnowledgeUrl}');
-        print('File: ${file.name}, Size: ${file.size} bytes');
-        
-        onStatusUpdate?.call('Subiendo imagen...');
-        
         final formData = html.FormData();
-        
-        // Usar callback placeholder
-        final uniqueId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-        final placeholderCallback = 'https://placeholder.callback.url/$uniqueId';
-        formData.append('CallbackUrl', placeholderCallback);
-        
-        print('Callback URL: $placeholderCallback');
-        
-        // Solo enviar el archivo
         formData.appendBlob('File', file, file.name);
-        
+
         final request = html.HttpRequest();
         request.open('POST', AppConfig.volatileKnowledgeUrl);
         request.setRequestHeader('X-API-KEY', AppConfig.iaApiKey);
-        
-        print('Headers configurados, enviando request...');
-        
+
         // Crear completer para manejar la respuesta async
         final completer = Completer<String>();
-        
         request.onLoadEnd.listen((e) {
-          print('=== UPLOAD RESPONSE ===');
-          print('Status: ${request.status}');
-          print('Response: ${request.responseText}');
-          
           if (request.status == 200 && request.responseText != null) {
             try {
               final responseData = json.decode(request.responseText!);
               final volatileKnowledgeId = responseData['id'] ?? '';
-              
-              print('Parsed ID: $volatileKnowledgeId');
-              
+
               if (volatileKnowledgeId.isEmpty) {
-                completer.completeError('No se recibió ID del volatile knowledge');
+                completer.completeError('Error al subir imagen');
                 return;
               }
-              
-              onStatusUpdate?.call('Imagen subida correctamente');
               completer.complete(volatileKnowledgeId);
-              
             } catch (e) {
-              print('Error parsing response: $e');
               completer.completeError('Error parsing response: $e');
             }
           } else {
-            print('HTTP Error - Status: ${request.status}, Response: ${request.responseText}');
             completer.completeError('HTTP ${request.status}: ${request.responseText}');
           }
         });
-        
+
         request.onError.listen((e) {
-          print('=== NETWORK ERROR ===');
-          print('Error: $e');
           completer.completeError('Network error: $e');
         });
-        
+
         request.onTimeout.listen((e) {
-          print('=== REQUEST TIMEOUT ===');
           completer.completeError('Request timeout');
         });
-        
-        // Configurar timeout
+
         request.timeout = 60000; // 1 minuto para upload
-        
-        // Enviar la request
         request.send(formData);
-        
-        // Esperar la respuesta
+
         return await completer.future;
-        
+
       } catch (e) {
-        print('=== UPLOAD RETRY ===');
-        print('Retry $currentRetry/$maxRetries - Error: $e');
-        
         currentRetry++;
         if (currentRetry >= maxRetries) {
           throw Exception('Error al subir imagen después de $maxRetries intentos: $e');
         }
-        
-        // Esperar antes del siguiente intento
-        print('Esperando ${currentRetry * 2} segundos antes del siguiente intento...');
+
         await Future.delayed(Duration(seconds: currentRetry * 2));
       }
     }
-    
+
     throw Exception('Error inesperado al subir imagen');
   }
 
-  /// Ejecutar análisis usando el agente de Nestlé con chatId
+  /// Ejecutar análisis
   Future<AnalysisResponse> executeAnalysis(String chatId, String fileId) async {
     int maxRetries = 3;
     int currentRetry = 0;
@@ -190,7 +146,7 @@ class SerenityApiService {
           uri, 
           headers: headers, 
           body: body,
-        ).timeout(const Duration(seconds: 600)); // Timeout de 10 minutos para análisis
+        ).timeout(const Duration(seconds: 600));
         
         if (response.statusCode == 200) {
           final jsonData = json.decode(response.body);
@@ -254,8 +210,7 @@ class AnalysisResponse {
   final List<dynamic> violations;
   final int timeToFirstToken;
   final String instanceId;
-  final List<ExecutorTaskLog> executorTaskLogs;
-  final Map<String, dynamic>? actionResults; // Nueva propiedad para capturar actionResults
+  final Map<String, dynamic>? actionResults;
 
   AnalysisResponse({
     required this.content,
@@ -264,8 +219,7 @@ class AnalysisResponse {
     required this.violations,
     required this.timeToFirstToken,
     required this.instanceId,
-    required this.executorTaskLogs,
-    this.actionResults, // Nueva propiedad
+    this.actionResults,
   });
 
   factory AnalysisResponse.fromJson(Map<String, dynamic> json) {
@@ -276,10 +230,7 @@ class AnalysisResponse {
       violations: List<dynamic>.from(json['violations'] ?? []),
       timeToFirstToken: json['timeToFirstToken'] ?? 0,
       instanceId: json['instanceId'] ?? '',
-      executorTaskLogs: (json['executorTaskLogs'] as List<dynamic>?)
-          ?.map((log) => ExecutorTaskLog.fromJson(log))
-          .toList() ?? [],
-      actionResults: json['actionResults'] as Map<String, dynamic>?, // Capturar actionResults
+      actionResults: json['actionResults'] as Map<String, dynamic>?,
     );
   }
 
@@ -291,41 +242,7 @@ class AnalysisResponse {
       'violations': violations,
       'timeToFirstToken': timeToFirstToken,
       'instanceId': instanceId,
-      'executorTaskLogs': executorTaskLogs.map((log) => log.toJson()).toList(),
-      'actionResults': actionResults, // Incluir actionResults
-    };
-  }
-}
-
-/// Modelo para los logs de ejecución
-class ExecutorTaskLog {
-  final String key;
-  final String description;
-  final int duration;
-  final bool success;
-
-  ExecutorTaskLog({
-    required this.key,
-    required this.description,
-    required this.duration,
-    required this.success,
-  });
-
-  factory ExecutorTaskLog.fromJson(Map<String, dynamic> json) {
-    return ExecutorTaskLog(
-      key: json['key'] ?? '',
-      description: json['description'] ?? '',
-      duration: json['duration'] ?? 0,
-      success: json['success'] ?? false,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'key': key,
-      'description': description,
-      'duration': duration,
-      'success': success,
+      'actionResults': actionResults,
     };
   }
 }

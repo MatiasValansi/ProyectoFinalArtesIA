@@ -160,16 +160,7 @@ class _NewArtState extends State<NewArt> {
           _uploadStatus = 'Preparando para análisis IA...';
         });
         
-        final volatileKnowledgeId = await _serenityApiService.uploadImageToVolatileKnowledge(
-          file,
-          onStatusUpdate: (status) {
-            if (mounted) {
-              setState(() {
-                _uploadStatus = status;
-              });
-            }
-          },
-        );
+        final volatileKnowledgeId = await _serenityApiService.uploadImage(file);
           
         // Una vez que el volatile knowledge esté listo, ejecutar el análisis
         setState(() {
@@ -179,7 +170,6 @@ class _NewArtState extends State<NewArt> {
         final analysisResponse = await _serenityApiService.executeAnalysis(chatId, volatileKnowledgeId);
 
         // Crear el caso con la URL de Supabase
-        print('💾 Creando caso con imageUrls: [$supabaseImageUrl]');
         final createdCase = await _casesService.createCaseFromModel(
           CaseModel(
             name: _productNameController.text.trim(),
@@ -189,8 +179,6 @@ class _NewArtState extends State<NewArt> {
             imageUrls: [supabaseImageUrl], // Guardar URL de Supabase como lista
           ),
         );
-        print('💾 Caso creado exitosamente con ID: ${createdCase.id}');
-
         // Ahora necesitamos obtener la respuesta completa del análisis para extraer los resultados
         // Nota: analysisResponse solo contiene información básica, necesitamos la respuesta completa del agente
         setState(() {
@@ -213,7 +201,7 @@ class _NewArtState extends State<NewArt> {
         }
         
       } catch (fileError) {
-        print('ERROR: no se pudo procesar la imagen ${file.name}: $fileError');
+  print('ERROR: no se pudo procesar la imagen ${file.name}: $fileError');
         
         // Limpiar imagen de Supabase si se subió pero falló el análisis
         if (supabaseImageUrl != null) {
@@ -270,42 +258,35 @@ class _NewArtState extends State<NewArt> {
   /// Extraer y guardar los resultados del análisis
   Future<void> _extractAndSaveAnalysisResults(dynamic analysisResponse, String caseId) async {
     try {
-      print('=== EXTRAYENDO RESULTADOS DEL ANÁLISIS EN NEW_ART ===');
-      
       // Verificar si hay actionResults en la respuesta
       if (analysisResponse.actionResults == null || 
           analysisResponse.actionResults['conclusion'] == null) {
-        print('❌ No hay conclusión en la respuesta del análisis');
         return;
       }
 
       final conclusion = analysisResponse.actionResults['conclusion'];
       Map<String, dynamic> analisis;
-      
+
       if (conclusion['jsonContent'] != null) {
         analisis = conclusion['jsonContent'];
-        print('✅ Usando jsonContent para extraer análisis');
       } else {
         // Intentar parsear desde content si no hay jsonContent
         try {
           analisis = jsonDecode(conclusion['content']);
-          print('✅ Parseado análisis desde content');
         } catch (e) {
-          print('❌ Error al parsear JSON desde content: $e');
+          print('Error al parsear JSON: $e');
           return;
         }
       }
 
-      print('Análisis extraído: $analisis');
-
       // Preparar los datos para actualizar
       final updateData = <String, dynamic>{};
-      
+
       // Guardar problemas (convertir de objeto a array de problemas)
       if (analisis['problemas'] != null) {
         final problemsMap = analisis['problemas'] as Map<String, dynamic>;
         final problemsList = <Map<String, dynamic>>[];
-        
+
         problemsMap.forEach((key, value) {
           if (value is Map<String, dynamic> && value.containsKey('titulo') && value.containsKey('detalle')) {
             problemsList.add({
@@ -315,15 +296,14 @@ class _NewArtState extends State<NewArt> {
             });
           }
         });
-        
+
         updateData['problems'] = problemsList;
-        print('✅ Problemas procesados: ${problemsList.length} encontrados');
       }
-      
+
       // Guardar recomendaciones (convertir a array de strings simples)
       if (analisis['recomendaciones'] != null) {
         final recommendationsList = <String>[];
-        
+
         if (analisis['recomendaciones'] is Map) {
           // Convertir las recomendaciones de objeto a array de strings
           final recomendaciones = analisis['recomendaciones'] as Map<String, dynamic>;
@@ -340,11 +320,10 @@ class _NewArtState extends State<NewArt> {
           // Si es un string, agregarlo directamente
           recommendationsList.add(analisis['recomendaciones'].toString());
         }
-        
+
         updateData['recommendations'] = recommendationsList;
-        print('✅ Recomendaciones procesadas como array de strings: ${recommendationsList.length} encontradas');
       }
-      
+
       // Guardar score (como número)
       if (analisis['puntuacion'] != null) {
         double? score;
@@ -355,25 +334,17 @@ class _NewArtState extends State<NewArt> {
         }
         if (score != null) {
           updateData['score'] = score;
-          print('✅ Score procesado: $score');
         }
       }
-      
+
       // Actualizar el caso solo si hay datos para actualizar
       if (updateData.isNotEmpty) {
-        print('💾 Actualizando caso $caseId con resultados del análisis...');
-        
         await _casesService.client.from('cases').update(updateData).eq('id', caseId);
-        
-        print('✅ Resultados del análisis guardados correctamente en el caso');
-      } else {
-        print('❌ No hay datos válidos para guardar del análisis');
       }
-      
+
     } catch (e) {
-      print('❌ ERROR al extraer y guardar resultados del análisis: $e');
+      print('ERROR al extraer y guardar resultados del análisis: $e');
     }
-    print('=== FIN DE EXTRACCIÓN DE RESULTADOS EN NEW_ART ===');
   }
 
   Future<void> _handleLogout() async {
@@ -513,33 +484,13 @@ class _NewArtState extends State<NewArt> {
                       ),
                     ),
                     child: _isUploading
-                        ? Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              ),
-                              if (_uploadStatus.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Flexible(
-                                  child: Text(
-                                    _uploadStatus,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.white,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ],
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
                           )
                         : const Text(
                             'Enviar a análisis',
