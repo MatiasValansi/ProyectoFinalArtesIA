@@ -6,6 +6,8 @@ import '../../database/cases_service.dart';
 import '../../database/user_service.dart';
 import '../../models/case_model.dart';
 import '../../models/user_model.dart';
+import '../widgets/filter_controls.dart';
+import '../widgets/loading_widget.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -220,26 +222,10 @@ class _HomeState extends State<Home> {
         ],
       ),
       body: _isLoading
-          ? _buildLoadingWidget()
+          ? const LoadingWidget()
           : _isSupervisor
-          ? _buildSupervisorDashboard()
-          : _buildUserProjects(),
-    );
-  }
-
-  Widget _buildLoadingWidget() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: Color(0xFF004B93)),
-          SizedBox(height: 16),
-          Text(
-            'Cargando proyectos...',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
-      ),
+              ? _buildSupervisorDashboard()
+              : _buildUserProjects(),
     );
   }
 
@@ -462,99 +448,20 @@ class _HomeState extends State<Home> {
   }
 
   Widget _buildFilterControls({bool isForUserView = false}) {
-    return Container(
-      margin: isForUserView ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16),
-      padding: EdgeInsets.all(isForUserView ? 16 : 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Búsqueda
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  if (isForUserView) {
-                    _userSearchQuery = value;
-                  } else {
-                    _searchQuery = value;
-                  }
-                });
-              },
-              decoration: InputDecoration(
-                hintText: isForUserView 
-                  ? 'Buscar por nombre del proyecto...'
-                  : 'Buscar por proyecto, usuario o email...',
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, 
-                  vertical: 16,
-                ),
-              ),
-            ),
-          ),
-
-          SizedBox(height: isForUserView ? 12 : 16),
-
-          // Filtros de estado
-          Row(
-            children: [
-              Text(
-                isForUserView ? 'Estado:' : 'Filtrar por estado:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[700],
-                  fontSize: 14,
-                ),
-              ),
-              SizedBox(width: isForUserView ? 12 : 16),
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip('Todos', 'all', isForUserView: isForUserView),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(isForUserView ? 'En proceso' : 'Pendientes', 'pending', isForUserView: isForUserView),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Aprobados', 'approved', isForUserView: isForUserView),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(isForUserView ? 'Rechazados' : 'Rechazados', 'rejected', isForUserView: isForUserView),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, String value, {bool isForUserView = false}) {
-    final isSelected = isForUserView 
-      ? _userFilterStatus == value 
-      : _filterStatus == value;
-    
-    return GestureDetector(
-      onTap: () {
+    return FilterControls(
+      isForUserView: isForUserView,
+      searchQuery: isForUserView ? _userSearchQuery : _searchQuery,
+      filterStatus: isForUserView ? _userFilterStatus : _filterStatus,
+      onSearchChanged: (value) {
+        setState(() {
+          if (isForUserView) {
+            _userSearchQuery = value;
+          } else {
+            _searchQuery = value;
+          }
+        });
+      },
+      onFilterChanged: (value) {
         setState(() {
           if (isForUserView) {
             _userFilterStatus = value;
@@ -563,42 +470,8 @@ class _HomeState extends State<Home> {
           }
         });
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected 
-            ? const Color(0xFF004B93) 
-            : Colors.grey[100],
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected 
-              ? const Color(0xFF004B93) 
-              : Colors.grey[300]!,
-            width: 1,
-          ),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: const Color(0xFF004B93).withOpacity(0.2),
-              spreadRadius: 1,
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ] : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey[700],
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 14,
-          ),
-        ),
-      ),
     );
   }
-
-
 
   List<Map<String, dynamic>> get _filteredCases {
     var filtered = _allCasesWithUsers.where((caseData) {
