@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../database/storage_service.dart';
 
-/// Widget para mostrar imágenes almacenadas en Supabase Storage
-/// Maneja automáticamente URLs públicas y privadas
 class SupabaseImageWidget extends StatefulWidget {
   final String? imageUrl;
   final double? width;
@@ -33,8 +30,8 @@ class _SupabaseImageWidgetState extends State<SupabaseImageWidget> {
 
   @override
   void initState() {
-  super.initState();
-  _isLoading = false;
+    super.initState();
+    _isLoading = false;
   }
 
   @override
@@ -47,8 +44,6 @@ class _SupabaseImageWidgetState extends State<SupabaseImageWidget> {
       });
     }
   }
-
-  // Eliminado: _loadImage y lógica de URL firmada
 
   Widget _buildImage() {
     if (widget.imageUrl == null) {
@@ -64,26 +59,23 @@ class _SupabaseImageWidgetState extends State<SupabaseImageWidget> {
         return _buildPlaceholder();
       },
       errorBuilder: (context, error, stackTrace) {
-        print('Error al cargar imagen desde red: $error');
         return _buildError();
       },
     );
   }
 
   Widget _buildPlaceholder() {
-    return widget.placeholder ?? 
+    return widget.placeholder ??
         Container(
           width: widget.width,
           height: widget.height,
           color: Colors.grey[200],
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
+          child: const Center(child: CircularProgressIndicator()),
         );
   }
 
   Widget _buildError() {
-    return widget.errorWidget ?? 
+    return widget.errorWidget ??
         Container(
           width: widget.width,
           height: widget.height,
@@ -92,18 +84,11 @@ class _SupabaseImageWidgetState extends State<SupabaseImageWidget> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  color: Colors.grey,
-                  size: 32,
-                ),
+                Icon(Icons.error_outline, color: Colors.grey, size: 32),
                 SizedBox(height: 8),
                 Text(
                   'Error al cargar imagen',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
@@ -124,17 +109,14 @@ class _SupabaseImageWidgetState extends State<SupabaseImageWidget> {
     }
 
     if (widget.borderRadius != null) {
-      child = ClipRRect(
-        borderRadius: widget.borderRadius!,
-        child: child,
-      );
+      child = ClipRRect(borderRadius: widget.borderRadius!, child: child);
     }
 
     return child;
   }
 }
 
-/// Widget helper para mostrar avatares de usuario
+/// Mostrar avatares de usuario
 class SupabaseAvatarWidget extends StatelessWidget {
   final String? imageUrl;
   final double size;
@@ -152,9 +134,7 @@ class SupabaseAvatarWidget extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-      ),
+      decoration: const BoxDecoration(shape: BoxShape.circle),
       child: SupabaseImageWidget(
         imageUrl: imageUrl,
         width: size,

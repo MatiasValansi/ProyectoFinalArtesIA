@@ -2,7 +2,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'supabase_config.dart';
-import '../models/user_model.dart';
 
 class UserService {
   final SupabaseClient client = SupabaseConfig.client;
@@ -69,32 +68,6 @@ class UserService {
           .eq('auth_uid', authUid)
           .single();
       return response;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /// Obtener todos los usuarios
-  Future<List<UserModel>> getUsersAsModels() async {
-    try {
-      final response = await client.from('users').select();
-      return response
-          .map<UserModel>((json) => UserModel.fromJson(json))
-          .toList();
-    } catch (e) {
-      throw Exception('Error al obtener usuarios como modelos: $e');
-    }
-  }
-
-  /// Obtener un usuario por auth_uid
-  Future<UserModel?> getUserByAuthUidAsModel(String authUid) async {
-    try {
-      final response = await client
-          .from('users')
-          .select()
-          .eq('auth_uid', authUid)
-          .single();
-      return UserModel.fromJson(response);
     } catch (e) {
       return null;
     }

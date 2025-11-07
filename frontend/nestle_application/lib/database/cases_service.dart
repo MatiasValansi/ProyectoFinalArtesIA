@@ -18,19 +18,23 @@ class CasesService {
     List<String>? imageUrls,
   }) async {
     try {
-      final response = await client.from('cases').insert({
-        'name': name,
-        'serenity_id': serenityId,
-        'user_id': userId,
-        'arte_id': arteId, // Ahora es una lista
-        'active': true,
-        'created_at': DateTime.now().toIso8601String(),
-        if (approved != null) 'approved': approved,
-        if (problems != null) 'problems': problems,
-        if (score != null) 'score': score,
-        if (recommendations != null) 'recommendations': recommendations,
-        if (imageUrls != null) 'image_urls': imageUrls,
-      }).select().single();
+      final response = await client
+          .from('cases')
+          .insert({
+            'name': name,
+            'serenity_id': serenityId,
+            'user_id': userId,
+            'arte_id': arteId,
+            'active': true,
+            'created_at': DateTime.now().toIso8601String(),
+            if (approved != null) 'approved': approved,
+            if (problems != null) 'problems': problems,
+            if (score != null) 'score': score,
+            if (recommendations != null) 'recommendations': recommendations,
+            if (imageUrls != null) 'image_urls': imageUrls,
+          })
+          .select()
+          .single();
 
       return response;
     } catch (e) {
@@ -51,7 +55,7 @@ class CasesService {
     }
   }
 
-  /// Obtener todos los casos con información del usuario para supervisores
+  // Obtener todos los casos con información del usuario
   Future<List<Map<String, dynamic>>> getAllCasesWithUserInfo() async {
     try {
       final response = await client
@@ -65,13 +69,12 @@ class CasesService {
             )
           ''')
           .order('created_at', ascending: false);
-      
+
       return List<Map<String, dynamic>>.from(response).map((caseData) {
         final userData = caseData['user_id'];
         if (userData == null || userData is! Map) {
           caseData['user_id'] = null;
         } else {
-          // Asegurar que todos los campos requeridos existan
           caseData['user_id'] = {
             'id': userData['id']?.toString() ?? 'unknown',
             'email': userData['email']?.toString() ?? 'usuario@desconocido.com',
@@ -100,7 +103,9 @@ class CasesService {
   }
 
   /// Obtener casos por serenity_id
-  Future<List<Map<String, dynamic>>> getCasesBySerenityId(String serenityId) async {
+  Future<List<Map<String, dynamic>>> getCasesBySerenityId(
+    String serenityId,
+  ) async {
     try {
       final response = await client
           .from('cases')
@@ -127,7 +132,7 @@ class CasesService {
     }
   }
 
-  /// Actualizar estado de aprobación de un caso
+  /// Actualizar estado
   Future<void> updateCaseApprovalStatus(String caseId, bool approved) async {
     try {
       await client
@@ -139,14 +144,17 @@ class CasesService {
     }
   }
 
-  /// Crear un nuevo caso 
+  /// Crear un nuevo caso
   Future<CaseModel> createCaseFromModel(CaseModel caseModel) async {
     try {
-      final response = await client.from('cases').insert(caseModel.toJson()).select().single();
+      final response = await client
+          .from('cases')
+          .insert(caseModel.toJson())
+          .select()
+          .single();
       return CaseModel.fromJson(response);
     } catch (e) {
       throw Exception('Error al crear caso desde modelo: $e');
     }
   }
-
 }

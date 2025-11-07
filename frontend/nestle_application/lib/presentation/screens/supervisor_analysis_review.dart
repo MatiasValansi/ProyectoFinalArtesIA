@@ -16,7 +16,8 @@ class SupervisorAnalysisReview extends StatefulWidget {
   });
 
   @override
-  State<SupervisorAnalysisReview> createState() => _SupervisorAnalysisReviewState();
+  State<SupervisorAnalysisReview> createState() =>
+      _SupervisorAnalysisReviewState();
 }
 
 class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
@@ -38,9 +39,8 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   Future<void> _loadAnalysisData() async {
-    // Simular carga de datos del análisis
     await Future.delayed(const Duration(seconds: 1));
-    
+
     if (widget.caseId == null) {
       setState(() {
         _isLoading = false;
@@ -48,15 +48,15 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
       });
       return;
     }
-    
+
     try {
-      // Primero intentar obtener con información del usuario
+      // Obtener con información del usuario
       final allCases = await CasesService().getAllCasesWithUserInfo();
       final caseData = allCases.firstWhere(
         (caseItem) => caseItem['id']?.toString() == widget.caseId,
         orElse: () => <String, dynamic>{},
       );
-      
+
       if (caseData.isEmpty) {
         // Si no se encuentra en la lista, usar el método directo
         final directCaseData = await CasesService().getCaseById(widget.caseId!);
@@ -75,7 +75,6 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
         });
       }
     } catch (e) {
-      print('Error cargando datos del caso: $e');
       setState(() {
         _isLoading = false;
         _analysisData = null;
@@ -85,14 +84,16 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
 
   Map<String, dynamic>? _adaptCaseData(Map<String, dynamic>? caseData) {
     if (caseData == null) return null;
-    
-    
+
     final userInfo = caseData['user_id'];
     return {
       ...caseData,
-      'user_name': userInfo is Map ? _extractUsernameFromEmail(userInfo['email']?.toString()) : 'Usuario desconocido',
-      'user_email': userInfo is Map ? userInfo['email']?.toString() ?? 'email@desconocido.com' : 'email@desconocido.com',
-      // Asegurar que los campos requeridos existan
+      'user_name': userInfo is Map
+          ? _extractUsernameFromEmail(userInfo['email']?.toString())
+          : 'Usuario desconocido',
+      'user_email': userInfo is Map
+          ? userInfo['email']?.toString() ?? 'email@desconocido.com'
+          : 'email@desconocido.com',
       'name': caseData['name']?.toString() ?? 'Proyecto sin nombre',
       'total_images': caseData['total_images'] ?? 0,
       'valid_images': caseData['valid_images'] ?? 0,
@@ -110,19 +111,19 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   void _setSelectedImage() {
-    // Primero verificar si hay URLs de imagen en Supabase (usar la primera del array)
+    // Primero verificar si hay imagen en Supabase
     if (_analysisData != null && _analysisData!['image_urls'] != null) {
       final imageUrls = _analysisData!['image_urls'] as List?;
       if (imageUrls != null && imageUrls.isNotEmpty) {
-        // Tomar la primera URL (la más reciente si se está guardando en orden)
-        _selectedImageUrl = imageUrls.first.toString();
+        _selectedImageUrl = imageUrls.last.toString();
         return;
       }
     }
-    // Fallback a la imagen subida anteriormente
     if (_analysisData != null && _analysisData!['lastUploadedImage'] != null) {
       final imageData = _analysisData!['lastUploadedImage'];
-      _selectedImageUrl = imageData is Map ? imageData['url']?.toString() : null;
+      _selectedImageUrl = imageData is Map
+          ? imageData['url']?.toString()
+          : null;
     } else {
       _selectedImageUrl = null;
     }
@@ -141,38 +142,35 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
 
   Future<void> _handleDecision(bool approved) async {
     if (widget.caseId == null) return;
-    
+
     setState(() {
       _isSubmitting = true;
     });
 
     try {
-      // Actualizar el campo approved del caso en la base de datos
+      // Actualizar el estado
       await CasesService().updateCaseApprovalStatus(widget.caseId!, approved);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              approved 
-                ? 'Arte aprobado exitosamente' 
-                : 'Arte rechazado. El usuario será notificado.',
+              approved
+                  ? 'Arte aprobado.'
+                  : 'Arte rechazado.',
             ),
             backgroundColor: approved ? Colors.green : Colors.red,
           ),
         );
-        
+
         setState(() {
           _isSubmitting = false;
         });
-        
-        // Regresar a la pantalla anterior después de un breve delay
         await Future.delayed(const Duration(seconds: 1));
         if (mounted) {
           context.go('/home');
         }
       }
     } catch (e) {
-      print('Error al actualizar el estado del caso: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -201,10 +199,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
         ),
         title: const Text(
           'Revisión de Análisis - Supervisor',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         actions: [
           Padding(
@@ -223,9 +218,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
           ),
         ],
       ),
-      body: _isLoading 
-        ? _buildLoadingWidget() 
-        : _buildContent(),
+      body: _isLoading ? _buildLoadingWidget() : _buildContent(),
     );
   }
 
@@ -234,16 +227,11 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: Color(0xFF004B93),
-          ),
+          CircularProgressIndicator(color: Color(0xFF004B93)),
           SizedBox(height: 16),
           Text(
             'Cargando datos del análisis...',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ],
       ),
@@ -259,46 +247,35 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header con información del proyecto
             _buildProjectHeader(),
-            
+
             const SizedBox(height: 24),
-            
-            // Cards de resumen
+
             _buildSummaryCards(),
-            
+
             const SizedBox(height: 24),
-            
-            // Layout principal con tres columnas
+
             SizedBox(
-              height: 600, // Altura fija para evitar problemas de layout
+              height: 600,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Columna 1: Imagen
-                  Expanded(
-                    flex: 1,
-                    child: _buildImageSection(),
-                  ),
-                  
+                  // Imagen
+                  Expanded(flex: 1, child: _buildImageSection()),
+
                   const SizedBox(width: 16),
-                  
-                  // Columna 2: Problemas
-                  Expanded(
-                    flex: 1,
-                    child: _buildProblemsSection(),
-                  ),
-                  
+
+                  // Problemas
+                  Expanded(flex: 1, child: _buildProblemsSection()),
+
                   const SizedBox(width: 16),
-                  
-                  // Columna 3: Recomendaciones y Botones de decisión
+
+                  // Recomendaciones y Botones de decisión
                   Expanded(
                     flex: 1,
                     child: Column(
                       children: [
-                        Expanded(
-                          child: _buildRecommendationsSection(),
-                        ),
+                        Expanded(child: _buildRecommendationsSection()),
                         const SizedBox(height: 16),
                         _buildDecisionButtons(),
                       ],
@@ -307,7 +284,6 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
                 ],
               ),
             ),
-
           ],
         ),
       ),
@@ -365,7 +341,8 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
               Expanded(
                 child: _buildInfoItem(
                   'Usuario',
-                  _analysisData!['user_name']?.toString() ?? 'Usuario desconocido',
+                  _analysisData!['user_name']?.toString() ??
+                      'Usuario desconocido',
                   Icons.person,
                 ),
               ),
@@ -379,9 +356,13 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
               Expanded(
                 child: _buildInfoItem(
                   'Fecha de envío',
-                  _analysisData!['created_at']?.toString() != null 
-                    ? _formatDate(DateTime.parse(_analysisData!['created_at'].toString()))
-                    : 'Fecha no disponible',
+                  _analysisData!['created_at']?.toString() != null
+                      ? _formatDate(
+                          DateTime.parse(
+                            _analysisData!['created_at'].toString(),
+                          ),
+                        )
+                      : 'Fecha no disponible',
                   Icons.schedule,
                 ),
               ),
@@ -404,11 +385,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
         children: [
           Row(
             children: [
-              Icon(
-                icon, 
-                size: 18, 
-                color: const Color(0xFF004B93),
-              ),
+              Icon(icon, size: 18, color: const Color(0xFF004B93)),
               const SizedBox(width: 8),
               Text(
                 label,
@@ -436,22 +413,23 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
   }
 
   Widget _buildSummaryCards() {
-    // Obtener el número de imágenes desde arte_id array
+    // Obtener el número de imágenes
     final arteIdArray = _analysisData!['arte_id'] as List<dynamic>? ?? [];
     final totalImages = arteIdArray.length;
-    
-    // Calcular problemas desde la nueva estructura
+
+    // Calcular problemas
     int issuesCount = 0;
     if (_analysisData!['problems'] != null) {
       if (_analysisData!['problems'] is List) {
         issuesCount = (_analysisData!['problems'] as List).length;
-      } else if (_analysisData!['problems'] is Map && _analysisData!['problems']['issues'] != null) {
+      } else if (_analysisData!['problems'] is Map &&
+          _analysisData!['problems']['issues'] != null) {
         issuesCount = (_analysisData!['problems']['issues'] as List).length;
       }
     }
-    
+
     final score = _analysisData!['score']?.toInt() ?? 0;
-    
+
     return Row(
       children: [
         Expanded(
@@ -484,7 +462,12 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
     );
   }
 
-  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
+  Widget _buildSummaryCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -517,13 +500,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
         ],
       ),
     );
@@ -587,9 +564,11 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.image_not_supported, 
-                               size: 48, 
-                               color: Colors.grey),
+                          Icon(
+                            Icons.image_not_supported,
+                            size: 48,
+                            color: Colors.grey,
+                          ),
                           SizedBox(height: 8),
                           Text('No hay imagen disponible'),
                         ],
@@ -607,11 +586,12 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
     if (_analysisData!['problems'] != null) {
       if (_analysisData!['problems'] is List) {
         problems = _analysisData!['problems'] as List;
-      } else if (_analysisData!['problems'] is Map && _analysisData!['problems']['issues'] != null) {
+      } else if (_analysisData!['problems'] is Map &&
+          _analysisData!['problems']['issues'] != null) {
         problems = (_analysisData!['problems']['issues'] ?? []) as List;
       }
     }
-    
+
     return Container(
       height: 600,
       padding: const EdgeInsets.all(20),
@@ -644,9 +624,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle, 
-                             size: 48, 
-                             color: Colors.green),
+                        Icon(Icons.check_circle, size: 48, color: Colors.green),
                         SizedBox(height: 8),
                         Text('No hay problemas detectados'),
                       ],
@@ -654,7 +632,9 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
                   )
                 : SingleChildScrollView(
                     child: Column(
-                      children: problems.map((problem) => _buildProblemItem(problem)).toList(),
+                      children: problems
+                          .map((problem) => _buildProblemItem(problem))
+                          .toList(),
                     ),
                   ),
           ),
@@ -665,7 +645,7 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
 
   Widget _buildProblemItem(dynamic problemData) {
     Map<String, dynamic> problem;
-    
+
     if (problemData is Map<String, dynamic>) {
       problem = problemData;
     } else if (problemData is String) {
@@ -698,11 +678,9 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  problem['detalle']?.toString() ?? 'Sin descripción disponible',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  problem['detalle']?.toString() ??
+                      'Sin descripción disponible',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ],
             ),
@@ -714,10 +692,11 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
 
   Widget _buildRecommendationsSection() {
     final recommendations = (_analysisData!['recommendations'] is List)
-      ? _analysisData!['recommendations'] as List
-      : (_analysisData!['recommendations'] != null
-        ? [_analysisData!['recommendations']] : []);
-    
+        ? _analysisData!['recommendations'] as List
+        : (_analysisData!['recommendations'] != null
+              ? [_analysisData!['recommendations']]
+              : []);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -749,9 +728,11 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.lightbulb_outline, 
-                             size: 48, 
-                             color: Colors.grey),
+                        Icon(
+                          Icons.lightbulb_outline,
+                          size: 48,
+                          color: Colors.grey,
+                        ),
                         SizedBox(height: 8),
                         Text('No hay recomendaciones'),
                       ],
@@ -759,32 +740,36 @@ class _SupervisorAnalysisReviewState extends State<SupervisorAnalysisReview> {
                   )
                 : SingleChildScrollView(
                     child: Column(
-                      children: recommendations.asMap().entries.map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                margin: const EdgeInsets.only(top: 4),
-                                width: 6,
-                                height: 6,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF004B93),
-                                  shape: BoxShape.circle,
-                                ),
+                      children: recommendations
+                          .asMap()
+                          .entries
+                          .map(
+                            (entry) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 4),
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF004B93),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      entry.value.toString(),
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  entry.value.toString(),
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ).toList(),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
           ),

@@ -40,7 +40,6 @@ class _ChatComponentState extends State<ChatComponent> {
   String _imageStatus = '';
   String? _imagePreviewUrl;
 
-  /// Helper para hacer setState() seguro verificando si el widget está montado
   void _safeSetState(VoidCallback fn) {
     if (mounted) {
       setState(fn);
@@ -64,7 +63,8 @@ class _ChatComponentState extends State<ChatComponent> {
     _chatMessages = [
       {
         'isUser': false,
-        'message': '¡Hola! Soy tu asistente de análisis de arte. Puedes preguntarme cualquier cosa sobre el análisis realizado en este proyecto.',
+        'message':
+            '¡Hola! Soy tu asistente de análisis de arte. Puedes preguntarme cualquier cosa sobre el análisis realizado en este proyecto.',
         'timestamp': DateTime.now(),
         'isLoading': false,
       },
@@ -74,7 +74,7 @@ class _ChatComponentState extends State<ChatComponent> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 600, // Altura fija para el chat
+      height: 600,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -89,7 +89,6 @@ class _ChatComponentState extends State<ChatComponent> {
       ),
       child: Column(
         children: [
-          // Header del chat
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
@@ -101,11 +100,7 @@ class _ChatComponentState extends State<ChatComponent> {
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.smart_toy,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                const Icon(Icons.smart_toy, color: Colors.white, size: 24),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
@@ -120,8 +115,8 @@ class _ChatComponentState extends State<ChatComponent> {
               ],
             ),
           ),
-          
-          // Área de mensajes
+
+          // Mensajes
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(16),
@@ -135,18 +130,16 @@ class _ChatComponentState extends State<ChatComponent> {
               ),
             ),
           ),
-          
+
           // Input del chat
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Colors.grey.shade200),
-              ),
+              border: Border(top: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Column(
               children: [
-                // Vista previa de imagen seleccionada
+                // Vista previa de imagen
                 if (_selectedImage != null) ...[
                   Container(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -180,7 +173,7 @@ class _ChatComponentState extends State<ChatComponent> {
                         // Info de la imagen
                         Row(
                           children: [
-                            // Status icon
+                            // Icono de estatus
                             if (_isUploadingFile)
                               const SizedBox(
                                 width: 20,
@@ -198,7 +191,8 @@ class _ChatComponentState extends State<ChatComponent> {
                                 color: Colors.green,
                                 size: 20,
                               )
-                            else if (_selectedImage != null && _volatileKnowledgeId == null)
+                            else if (_selectedImage != null &&
+                                _volatileKnowledgeId == null)
                               Icon(
                                 Icons.pending,
                                 color: Colors.orange[600],
@@ -228,21 +222,21 @@ class _ChatComponentState extends State<ChatComponent> {
                     ),
                   ),
                 ],
-                // Input row
+                // Input
                 Row(
                   children: [
                     // Botón para adjuntar imagen
                     IconButton(
                       icon: Icon(
                         Icons.attach_file,
-                        color: (_selectedImage != null && !_isUploadingFile) 
-                            ? const Color(0xFF004B93) 
+                        color: (_selectedImage != null && !_isUploadingFile)
+                            ? const Color(0xFF004B93)
                             : Colors.grey[600],
                       ),
                       onPressed: _isUploadingFile ? null : _selectImage,
-                      tooltip: _isUploadingFile 
-                              ? 'Subiendo archivo...'
-                              : 'Adjuntar archivo',
+                      tooltip: _isUploadingFile
+                          ? 'Subiendo archivo...'
+                          : 'Adjuntar archivo',
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -252,8 +246,8 @@ class _ChatComponentState extends State<ChatComponent> {
                         textInputAction: TextInputAction.send,
                         decoration: InputDecoration(
                           hintText: _isUploadingFile
-                                  ? 'Procesando imagen...'
-                                  : 'Pregunta sobre el análisis...',
+                              ? 'Procesando imagen...'
+                              : 'Pregunta sobre el análisis...',
                           hintStyle: TextStyle(color: Colors.grey[500]),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
@@ -261,7 +255,9 @@ class _ChatComponentState extends State<ChatComponent> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: const BorderSide(color: Color(0xFF004B93)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF004B93),
+                            ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -283,7 +279,9 @@ class _ChatComponentState extends State<ChatComponent> {
                                     Icons.send,
                                     color: Color(0xFF004B93),
                                   ),
-                            onPressed: (_isChatSending || _isUploadingFile) ? null : _sendMessage,
+                            onPressed: (_isChatSending || _isUploadingFile)
+                                ? null
+                                : _sendMessage,
                           ),
                         ),
                         onSubmitted: (_) => _sendMessage(),
@@ -313,7 +311,9 @@ class _ChatComponentState extends State<ChatComponent> {
       margin: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[
             Container(
@@ -323,21 +323,22 @@ class _ChatComponentState extends State<ChatComponent> {
                 color: Color(0xFF004B93),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.smart_toy,
-                color: Colors.white,
-                size: 18,
-              ),
+              child: const Icon(Icons.smart_toy, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Container(
                   constraints: const BoxConstraints(maxWidth: 280),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: isUser ? const Color(0xFF004B93) : Colors.grey[100],
                     borderRadius: BorderRadius.circular(18),
@@ -378,12 +379,14 @@ class _ChatComponentState extends State<ChatComponent> {
                               Container(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 width: double.infinity,
-                                constraints: const BoxConstraints(maxHeight: 200),
+                                constraints: const BoxConstraints(
+                                  maxHeight: 200,
+                                ),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: isUser 
-                                        ? Colors.white.withOpacity(0.3) 
+                                    color: isUser
+                                        ? Colors.white.withOpacity(0.3)
                                         : Colors.grey[300]!,
                                   ),
                                 ),
@@ -395,23 +398,28 @@ class _ChatComponentState extends State<ChatComponent> {
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
                                         height: 80,
-                                        color: isUser 
-                                            ? Colors.white.withOpacity(0.2) 
+                                        color: isUser
+                                            ? Colors.white.withOpacity(0.2)
                                             : Colors.grey[200],
                                         child: Center(
                                           child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
                                               Icon(
                                                 Icons.broken_image,
                                                 size: 32,
-                                                color: isUser ? Colors.white : Colors.grey[600],
+                                                color: isUser
+                                                    ? Colors.white
+                                                    : Colors.grey[600],
                                               ),
                                               const SizedBox(height: 4),
                                               Text(
                                                 'Error al cargar imagen',
                                                 style: TextStyle(
-                                                  color: isUser ? Colors.white : Colors.grey[600],
+                                                  color: isUser
+                                                      ? Colors.white
+                                                      : Colors.grey[600],
                                                   fontSize: 12,
                                                 ),
                                               ),
@@ -424,19 +432,27 @@ class _ChatComponentState extends State<ChatComponent> {
                                       if (loadingProgress == null) return child;
                                       return Container(
                                         height: 80,
-                                        color: isUser 
-                                            ? Colors.white.withOpacity(0.2) 
+                                        color: isUser
+                                            ? Colors.white.withOpacity(0.2)
                                             : Colors.grey[200],
                                         child: Center(
                                           child: CircularProgressIndicator(
-                                            value: loadingProgress.expectedTotalBytes != null
-                                                ? loadingProgress.cumulativeBytesLoaded / 
-                                                  loadingProgress.expectedTotalBytes!
+                                            value:
+                                                loadingProgress
+                                                        .expectedTotalBytes !=
+                                                    null
+                                                ? loadingProgress
+                                                          .cumulativeBytesLoaded /
+                                                      loadingProgress
+                                                          .expectedTotalBytes!
                                                 : null,
                                             strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                              isUser ? Colors.white : const Color(0xFF004B93),
-                                            ),
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  isUser
+                                                      ? Colors.white
+                                                      : const Color(0xFF004B93),
+                                                ),
                                           ),
                                         ),
                                       );
@@ -447,10 +463,13 @@ class _ChatComponentState extends State<ChatComponent> {
                               if (imageName != null) ...[
                                 Container(
                                   margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isUser 
-                                        ? Colors.white.withOpacity(0.2) 
+                                    color: isUser
+                                        ? Colors.white.withOpacity(0.2)
                                         : Colors.grey[200],
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -460,14 +479,18 @@ class _ChatComponentState extends State<ChatComponent> {
                                       Icon(
                                         Icons.image,
                                         size: 16,
-                                        color: isUser ? Colors.white : Colors.grey[600],
+                                        color: isUser
+                                            ? Colors.white
+                                            : Colors.grey[600],
                                       ),
                                       const SizedBox(width: 4),
                                       Flexible(
                                         child: Text(
                                           imageName,
                                           style: TextStyle(
-                                            color: isUser ? Colors.white : Colors.grey[600],
+                                            color: isUser
+                                                ? Colors.white
+                                                : Colors.grey[600],
                                             fontSize: 12,
                                           ),
                                           overflow: TextOverflow.ellipsis,
@@ -481,10 +504,13 @@ class _ChatComponentState extends State<ChatComponent> {
                               // Fallback si no hay URL pero sí imagen
                               Container(
                                 margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isUser 
-                                      ? Colors.white.withOpacity(0.2) 
+                                  color: isUser
+                                      ? Colors.white.withOpacity(0.2)
                                       : Colors.grey[200],
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -494,14 +520,18 @@ class _ChatComponentState extends State<ChatComponent> {
                                     Icon(
                                       Icons.image,
                                       size: 16,
-                                      color: isUser ? Colors.white : Colors.grey[600],
+                                      color: isUser
+                                          ? Colors.white
+                                          : Colors.grey[600],
                                     ),
                                     const SizedBox(width: 4),
                                     Flexible(
                                       child: Text(
                                         imageName,
                                         style: TextStyle(
-                                          color: isUser ? Colors.white : Colors.grey[600],
+                                          color: isUser
+                                              ? Colors.white
+                                              : Colors.grey[600],
                                           fontSize: 12,
                                         ),
                                         overflow: TextOverflow.ellipsis,
@@ -526,10 +556,7 @@ class _ChatComponentState extends State<ChatComponent> {
                 const SizedBox(height: 4),
                 Text(
                   _formatTimestamp(timestamp),
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
                 ),
               ],
             ),
@@ -543,11 +570,7 @@ class _ChatComponentState extends State<ChatComponent> {
                 color: Colors.grey[300],
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.person,
-                color: Colors.grey,
-                size: 18,
-              ),
+              child: const Icon(Icons.person, color: Colors.grey, size: 18),
             ),
           ],
         ],
@@ -556,23 +579,24 @@ class _ChatComponentState extends State<ChatComponent> {
   }
 
   void _selectImage() {
-    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+    final html.FileUploadInputElement uploadInput =
+        html.FileUploadInputElement();
     uploadInput.accept = '.jpg,.jpeg,.png,.gif,.webp';
-    
+
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
       if (files != null && files.isNotEmpty) {
         _selectedImage = files[0];
-        _uploadFileToVolatileKnowledge();
+        _uploadFile();
       }
     });
-    
+
     uploadInput.click();
   }
 
-  Future<void> _uploadFileToVolatileKnowledge() async {
+  Future<void> _uploadFile() async {
     if (_selectedImage == null) return;
-    
+
     setState(() {
       _isUploadingFile = true;
       _imageStatus = 'Iniciando...';
@@ -582,28 +606,29 @@ class _ChatComponentState extends State<ChatComponent> {
 
     try {
       final serenityService = SerenityApiService();
-      
+
       // Crear preview URL para la imagen
       final reader = html.FileReader();
       reader.readAsDataUrl(_selectedImage!);
       await reader.onLoad.first;
-      
+
       setState(() {
         _imagePreviewUrl = reader.result as String?;
       });
 
-      // 1. Obtener información del usuario actual
+      // Obtener información del usuario actual
       final userData = await _authService.getCurrentUserData();
       final userId = userData?['id']?.toString() ?? 'unknown';
 
-      // 2. Subir imagen a Supabase Storage primero
+      // Subir imagen a Supabase Storage
       _safeSetState(() {
         _imageStatus = 'Guardando imagen en servidor...';
       });
 
       supabaseImageUrl = await _storageService.uploadImageFromWeb(
         _selectedImage!,
-        customPath: 'chat/${userId}', // Organizar en carpeta chat por usuario
+        // Organizar en carpeta chat por usuario
+        customPath: 'chat/${userId}',
         onProgress: (status) {
           if (mounted) {
             setState(() {
@@ -612,26 +637,25 @@ class _ChatComponentState extends State<ChatComponent> {
           }
         },
       );
-      
-      // 3. Subir imagen como volatile knowledge para análisis IA
+
+      // Subir imagen para análisis IA
       _safeSetState(() {
         _imageStatus = 'Preparando para análisis IA...';
       });
-      
+
       _volatileKnowledgeId = await serenityService.uploadImage(_selectedImage!);
-      
-      // 4. Guardar inmediatamente el ID en la base de datos con URL de Supabase
+
+      // Guardar inmediatamente ID en la base de datos
       if (_volatileKnowledgeId != null) {
         await _addImageToDatabase(_volatileKnowledgeId!, supabaseImageUrl);
       }
-      
+
       _safeSetState(() {
         _isUploadingFile = false;
         _imageStatus = 'Imagen guardada y lista para análisis';
       });
-      
     } catch (e) {
-      // Limpiar imagen de Supabase si se subió pero falló después
+      // Limpiar imagen de Supabase si se subió pero falló
       if (supabaseImageUrl != null) {
         try {
           final fileName = supabaseImageUrl.split('/').last;
@@ -639,7 +663,7 @@ class _ChatComponentState extends State<ChatComponent> {
           final userId = userData?['id']?.toString() ?? 'unknown';
           await _storageService.deleteImage('chat/${userId}/$fileName');
         } catch (deleteError) {
-          print('Error al eliminar imagen de Supabase: $deleteError');
+          throw ('Error al eliminar imagen de Supabase: $deleteError');
         }
       }
 
@@ -647,7 +671,7 @@ class _ChatComponentState extends State<ChatComponent> {
         _isUploadingFile = false;
         _imageStatus = 'Error al subir imagen';
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -659,94 +683,97 @@ class _ChatComponentState extends State<ChatComponent> {
     }
   }
 
-  /// Agregar imagen a la base de datos inmediatamente después del upload
-  Future<void> _addImageToDatabase(String volatileKnowledgeId, [String? supabaseImageUrl]) async {
+  /// Agregar imagen a la base de datos después del upload
+  Future<void> _addImageToDatabase(
+    String volatileKnowledgeId, [
+    String? supabaseImageUrl,
+  ]) async {
     try {
-      // Verificar que tenemos serenity_id del caso
       if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
         return;
       }
-      
-      // Obtener casos por serenity_id
-      final cases = await _casesService.getCasesBySerenityId(widget.caseSerenityId!);
-      
+
+      // Obtener casos
+      final cases = await _casesService.getCasesBySerenityId(
+        widget.caseSerenityId!,
+      );
+
       if (cases.isEmpty) {
         return;
       }
-      
+
       final caseId = cases.first['id'];
       final currentArteId = cases.first['arte_id'] as List<dynamic>? ?? [];
-      final currentImageUrls = cases.first['image_urls'] as List<dynamic>? ?? [];
-      
-      
-      // Solo agregar si no está ya en el array (evitar duplicados)
+      final currentImageUrls =
+          cases.first['image_urls'] as List<dynamic>? ?? [];
+
+      // Solo agregar si no está ya en el array
       if (!currentArteId.contains(volatileKnowledgeId)) {
-        final newArteId = List<String>.from(currentArteId)..add(volatileKnowledgeId);
+        final newArteId = List<String>.from(currentArteId)
+          ..add(volatileKnowledgeId);
         final newImageUrls = List<String>.from(currentImageUrls);
-        
-        // Agregar la URL de Supabase al array si se proporciona
-        if (supabaseImageUrl != null && !newImageUrls.contains(supabaseImageUrl)) {
+
+        if (supabaseImageUrl != null &&
+            !newImageUrls.contains(supabaseImageUrl)) {
           newImageUrls.add(supabaseImageUrl);
         }
-        await _casesService.client.from('cases').update({
-          'arte_id': newArteId,
-          'image_urls': newImageUrls,
-        }).eq('id', caseId);
+        await _casesService.client
+            .from('cases')
+            .update({'arte_id': newArteId, 'image_urls': newImageUrls})
+            .eq('id', caseId);
       }
-      
     } catch (e) {
-      // Error silencioso para mejor UX
+      // No hacer nada en caso de error
     }
   }
 
-  /// Remover imagen de la base de datos cuando se elimina del chat
+  /// Remover imagen de la bdd cuando se elimina del chat
   Future<void> _removeImageFromDatabase(String volatileKnowledgeId) async {
     try {
-      // Verificar que tenemos serenity_id del caso
       if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
         return;
       }
-      
+
       // Obtener casos por serenity_id
-      final cases = await _casesService.getCasesBySerenityId(widget.caseSerenityId!);
-      
+      final cases = await _casesService.getCasesBySerenityId(
+        widget.caseSerenityId!,
+      );
+
       if (cases.isEmpty) {
         return;
       }
-      
+
       final caseId = cases.first['id'];
       final currentArteId = cases.first['arte_id'] as List<dynamic>? ?? [];
-      final currentImageUrls = cases.first['image_urls'] as List<dynamic>? ?? [];
-      
+      final currentImageUrls =
+          cases.first['image_urls'] as List<dynamic>? ?? [];
+
       // Remover el ID del array si existe
       if (currentArteId.contains(volatileKnowledgeId)) {
         final arteIndex = currentArteId.indexOf(volatileKnowledgeId);
-        final newArteId = List<String>.from(currentArteId)..remove(volatileKnowledgeId);
+        final newArteId = List<String>.from(currentArteId)
+          ..remove(volatileKnowledgeId);
         final newImageUrls = List<String>.from(currentImageUrls);
-        
-        // Si hay la misma cantidad de URLs que de arte_ids, remover la URL correspondiente por índice
+
         if (arteIndex < newImageUrls.length && arteIndex >= 0) {
           newImageUrls.removeAt(arteIndex);
         }
-        
-        
-        await _casesService.client.from('cases').update({
-          'arte_id': newArteId,
-          'image_urls': newImageUrls,
-        }).eq('id', caseId);
+
+        await _casesService.client
+            .from('cases')
+            .update({'arte_id': newArteId, 'image_urls': newImageUrls})
+            .eq('id', caseId);
       }
-      
     } catch (e) {
-      // Error silencioso para mejor UX
+      // No hacer nada en caso de error
     }
   }
 
   void _removeSelectedImage() async {
-    // Si hay un volatile knowledge ID, removerlo de la base de datos primero
     if (_volatileKnowledgeId != null) {
       await _removeImageFromDatabase(_volatileKnowledgeId!);
     }
-    
+
     setState(() {
       _selectedImage = null;
       _volatileKnowledgeId = null;
@@ -776,7 +803,7 @@ class _ChatComponentState extends State<ChatComponent> {
 
     setState(() {
       _isChatSending = true;
-      
+
       // Agregar mensaje del usuario
       _chatMessages.add({
         'isUser': true,
@@ -784,10 +811,10 @@ class _ChatComponentState extends State<ChatComponent> {
         'timestamp': DateTime.now(),
         'hasImage': _selectedImage != null,
         'imageName': _selectedImage?.name,
-        'imageUrl': _imagePreviewUrl, // Guardar la URL de la imagen
+        'imageUrl': _imagePreviewUrl,
       });
-      
-      // Agregar indicador de carga para la respuesta de IA
+
+      // Agregar indicador de carga de respuesta
       _chatMessages.add({
         'isUser': false,
         'message': 'Escribiendo...',
@@ -798,11 +825,11 @@ class _ChatComponentState extends State<ChatComponent> {
 
     _chatController.clear();
     _scrollToBottom();
-    
-    // Guardar el volatile knowledge ID antes de limpiar la UI
-    final volatileKnowledgeIdToSend = _volatileKnowledgeId;
-    
-    // Limpiar la imagen inmediatamente de la UI (mejor UX)
+
+    // Guardar el ID de imagen antes de limpiar la UI
+    final volatileKnowledgeIdDBB = _volatileKnowledgeId;
+
+    // Limpiar la imagen inmediatamente de la UI
     if (_volatileKnowledgeId != null || _selectedImage != null) {
       setState(() {
         _volatileKnowledgeId = null;
@@ -811,19 +838,22 @@ class _ChatComponentState extends State<ChatComponent> {
         _imagePreviewUrl = null;
       });
     }
-    
-    _sendMessageToAgent(messageText, volatileKnowledgeIdToSend);
+
+    _sendMessageToAgent(messageText, volatileKnowledgeIdDBB);
   }
 
-  Future<void> _sendMessageToAgent(String message, String? volatileKnowledgeIdToSend) async {
+  Future<void> _sendMessageToAgent(
+    String message,
+    String? volatileKnowledgeIdDBB,
+  ) async {
     try {
-      // Si no hay serenity_id del case, mostrar error
       if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
         _safeSetState(() {
           _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
           _chatMessages.add({
             'isUser': false,
-            'message': 'Error: No se pudo identificar el caso para el chat. Verifica que el caso tenga un ID de Serenity válido.',
+            'message':
+                'Error: No se pudo identificar el caso para el chat. Verifica que el caso tenga un ID de Serenity válido.',
             'timestamp': DateTime.now(),
             'isLoading': false,
           });
@@ -834,22 +864,16 @@ class _ChatComponentState extends State<ChatComponent> {
       }
 
       final requestBody = [
-        {
-          'key': 'chatId',
-          'value': widget.caseSerenityId!,
-        },
-        {
-          'key': 'message',
-          'value': message,
-        },
-        if (volatileKnowledgeIdToSend != null) ...[
+        {'key': 'chatId', 'value': widget.caseSerenityId!},
+        {'key': 'message', 'value': message},
+        if (volatileKnowledgeIdDBB != null) ...[
           {
             'key': 'volatileKnowledgeIds',
-            'value': [volatileKnowledgeIdToSend],
-          }
-        ]
+            'value': [volatileKnowledgeIdDBB],
+          },
+        ],
       ];
-      
+
       final response = await http.post(
         Uri.parse(AppConfig.nestleCheckAgentUrl),
         headers: AppConfig.apiHeaders,
@@ -859,7 +883,7 @@ class _ChatComponentState extends State<ChatComponent> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Primero mostrar la respuesta al usuario
+        // Mostrar la respuesta al usuario
         _safeSetState(() {
           // Remover mensaje de carga
           _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
@@ -872,30 +896,28 @@ class _ChatComponentState extends State<ChatComponent> {
           });
           _isChatSending = false;
         });
-        
-        // Guardar solo los resultados del análisis (problemas, recomendaciones, score)
+
+        // Guardar los resultados del análisis
         await _saveAnalysisResults(data);
-        
-        // SIEMPRE notificar al componente padre que hubo una respuesta de la IA
-        print('ChatComponent: Notificando actualización al componente padre');
+
         if (widget.onAnalysisUpdated != null) {
-          print('ChatComponent: Callback existe, ejecutando...');
           widget.onAnalysisUpdated!();
-        } else {
-          print('ChatComponent: ERROR - No hay callback configurado');
         }
       } else {
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
       String errorMessage = 'Error de conexión: No se pudo enviar el mensaje.';
-      
-      if (e.toString().contains('SocketException') || e.toString().contains('Network')) {
-        errorMessage = 'Error de red: Verifica tu conexión a internet e intenta nuevamente.';
+
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Network')) {
+        errorMessage =
+            'Error de red: Verifica tu conexión a internet e intenta nuevamente.';
       } else if (e.toString().contains('FormatException')) {
-        errorMessage = 'Error en la respuesta del servidor. Intenta nuevamente.';
+        errorMessage =
+            'Error en la respuesta del servidor. Intenta nuevamente.';
       }
-      
+
       _safeSetState(() {
         // Remover mensaje de carga y mostrar error
         _chatMessages.removeWhere((msg) => msg['isLoading'] == true);
@@ -906,67 +928,69 @@ class _ChatComponentState extends State<ChatComponent> {
           'isLoading': false,
         });
         _isChatSending = false;
-      });  
+      });
     }
-    
+
     _scrollToBottom();
   }
 
-
-
-  /// Guardar resultados del análisis en la base de datos (método asíncrono separado)
+  // Guardar resultados del análisis en la base de datos
   Future<void> _saveAnalysisResults(Map<String, dynamic> data) async {
     try {
-      // Verificar si hay conclusión en la respuesta
-      bool hasAnalysis = data['actionResults'] != null && data['actionResults']['conclusion'] != null;
-      
+      // Verificar si hay conclusión
+      bool hasAnalysis =
+          data['actionResults'] != null &&
+          data['actionResults']['conclusion'] != null;
+
       if (!hasAnalysis) {
         return;
       }
 
       Map<String, dynamic>? analisis;
-      
+
       if (hasAnalysis) {
         final conclusion = data['actionResults']['conclusion'];
-        
+
         if (conclusion['jsonContent'] != null) {
           analisis = conclusion['jsonContent'];
         } else {
-          // Intentar parsear desde content si no hay jsonContent
           try {
             analisis = jsonDecode(conclusion['content']);
           } catch (e) {
-            analisis = null; // No hay análisis válido
+            analisis = null;
           }
         }
       }
-      
-      // Verificar que tenemos serenity_id del caso
+
+      // Verificar que tenemos serenity_id
       if (widget.caseSerenityId == null || widget.caseSerenityId!.isEmpty) {
         return;
       }
-      
+
       // Obtener casos por serenity_id
-      final cases = await _casesService.getCasesBySerenityId(widget.caseSerenityId!);
-      
+      final cases = await _casesService.getCasesBySerenityId(
+        widget.caseSerenityId!,
+      );
+
       if (cases.isEmpty) {
         return;
       }
-      
+
       final caseId = cases.first['id'];
-      
-      // Preparar los datos para actualizar
+
       final updateData = <String, dynamic>{};
-      
+
       // Solo procesar análisis si existe
       if (analisis != null) {
-        // Guardar problemas (convertir de objeto a array de problemas)
+        // Guardar problemas
         if (analisis['problemas'] != null) {
           final problemsMap = analisis['problemas'] as Map<String, dynamic>;
           final problemsList = <Map<String, dynamic>>[];
-          
+
           problemsMap.forEach((key, value) {
-            if (value is Map<String, dynamic> && value.containsKey('titulo') && value.containsKey('detalle')) {
+            if (value is Map<String, dynamic> &&
+                value.containsKey('titulo') &&
+                value.containsKey('detalle')) {
               problemsList.add({
                 'id': key,
                 'titulo': value['titulo'],
@@ -974,35 +998,36 @@ class _ChatComponentState extends State<ChatComponent> {
               });
             }
           });
-          
+
           updateData['problems'] = problemsList;
         }
-        
-        // Guardar recomendaciones (convertir a array de strings simples)
+
+        // Guardar recomendaciones
         if (analisis['recomendaciones'] != null) {
           final recommendationsList = <String>[];
-          
+
           if (analisis['recomendaciones'] is Map) {
             // Convertir las recomendaciones de objeto a array de strings
-            final recomendaciones = analisis['recomendaciones'] as Map<String, dynamic>;
+            final recomendaciones =
+                analisis['recomendaciones'] as Map<String, dynamic>;
             recomendaciones.values.forEach((value) {
               recommendationsList.add(value.toString());
             });
           } else if (analisis['recomendaciones'] is List) {
-            // Si ya es una lista, extraer solo el texto
+            // Extraer solo el texto si es una lista
             final recomendaciones = analisis['recomendaciones'] as List;
             for (final recommendation in recomendaciones) {
               recommendationsList.add(recommendation.toString());
             }
           } else if (analisis['recomendaciones'] is String) {
-            // Si es un string, agregarlo directamente
+            // Agregar si es string
             recommendationsList.add(analisis['recomendaciones'].toString());
           }
-          
+
           updateData['recommendations'] = recommendationsList;
         }
-        
-        // Guardar score (como número)
+
+        // Guardar score
         if (analisis['puntuacion'] != null) {
           double? score;
           if (analisis['puntuacion'] is num) {
@@ -1015,14 +1040,16 @@ class _ChatComponentState extends State<ChatComponent> {
           }
         }
       }
-      
-      // Actualizar el caso solo si hay datos para actualizar
+
+      // Actualizar el caso solo si hay datos
       if (updateData.isNotEmpty) {
-        await _casesService.client.from('cases').update(updateData).eq('id', caseId);
+        await _casesService.client
+            .from('cases')
+            .update(updateData)
+            .eq('id', caseId);
       }
-      
     } catch (e) {
-      // Error silencioso para mejor UX
+      // No hacer nada en caso de error
     }
   }
 

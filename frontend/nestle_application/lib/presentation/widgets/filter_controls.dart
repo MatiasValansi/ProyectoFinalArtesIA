@@ -19,7 +19,9 @@ class FilterControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: isForUserView ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16),
+      margin: isForUserView
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 16),
       padding: EdgeInsets.all(isForUserView ? 16 : 20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -35,7 +37,7 @@ class FilterControls extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Search bar
+          // Busqueda
           Container(
             decoration: BoxDecoration(
               color: Colors.grey[50],
@@ -61,7 +63,7 @@ class FilterControls extends StatelessWidget {
 
           SizedBox(height: isForUserView ? 12 : 16),
 
-          // Filter chips
+          // Filtros
           Row(
             children: [
               Text(
@@ -81,12 +83,16 @@ class FilterControls extends StatelessWidget {
                       _buildFilterChip('Todos', 'all'),
                       const SizedBox(width: 8),
                       _buildFilterChip(
-                          isForUserView ? 'En proceso' : 'Pendientes', 'pending'),
+                        isForUserView ? 'En proceso' : 'Pendientes',
+                        'pending',
+                      ),
                       const SizedBox(width: 8),
                       _buildFilterChip('Aprobados', 'approved'),
                       const SizedBox(width: 8),
                       _buildFilterChip(
-                          isForUserView ? 'Rechazados' : 'Rechazados', 'rejected'),
+                        isForUserView ? 'Rechazados' : 'Rechazados',
+                        'rejected',
+                      ),
                     ],
                   ),
                 ),

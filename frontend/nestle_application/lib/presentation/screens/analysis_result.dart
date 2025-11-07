@@ -5,16 +5,11 @@ import '../widgets/chat_component.dart';
 import '../../core/auth/auth_service.dart';
 import '../../database/cases_service.dart';
 
-
 class AnalysisResult extends StatefulWidget {
   final String projectName;
   final String? serenityId;
 
-  const AnalysisResult({
-    super.key,
-    required this.projectName,
-    this.serenityId,
-  });
+  const AnalysisResult({super.key, required this.projectName, this.serenityId});
 
   @override
   State<AnalysisResult> createState() => _AnalysisResultState();
@@ -28,21 +23,14 @@ class _AnalysisResultState extends State<AnalysisResult> {
   List<String> _imageUrls = [];
   int _currentImageIndex = 0;
 
-
   @override
   void initState() {
-  super.initState();
-  _loadAnalysisResultsFromDB();
+    super.initState();
+    _loadAnalysisResultsFromDB();
   }
 
-
-
-
   Future<void> _loadAnalysisResultsFromDB() async {
-    print('AnalysisResult: _loadAnalysisResultsFromDB iniciado con serenityId: ${widget.serenityId}');
-    
     if (widget.serenityId == null) {
-      print('AnalysisResult: serenityId es null, terminando');
       setState(() {
         _isLoading = false;
         _analysisData = null;
@@ -50,17 +38,18 @@ class _AnalysisResultState extends State<AnalysisResult> {
       return;
     }
     try {
-      final cases = await _casesService.getCasesBySerenityId(widget.serenityId!);
+      final cases = await _casesService.getCasesBySerenityId(
+        widget.serenityId!,
+      );
       if (cases.isNotEmpty) {
         final caseData = cases.first;
-        
-        // Procesar problemas del nuevo formato del agente (ahora es un array)
+
+        // Procesar problemas
         List<Map<String, dynamic>> issuesList = [];
-        if (caseData['problems'] != null) {
-          if (caseData['problems'] is List) {
-            // Nuevo formato: array de problemas
-            final problemsArray = caseData['problems'] as List<dynamic>;
-            for (final problem in problemsArray) {
+        final problems = caseData['problems'];
+        if (problems != null) {
+          if (problems is List) {
+            for (final problem in problems) {
               if (problem is Map<String, dynamic>) {
                 issuesList.add({
                   'type': problem['titulo'] ?? 'Problema',
@@ -68,127 +57,57 @@ class _AnalysisResultState extends State<AnalysisResult> {
                 });
               }
             }
-          } else if (caseData['problems'] is Map) {
-            // Formato anterior: objeto de problemas (por compatibilidad)
-            final problems = caseData['problems'] as Map<String, dynamic>;
-            problems.forEach((key, value) {
-              if (value is Map<String, dynamic> && value.containsKey('titulo') && value.containsKey('detalle')) {
+          } else if (problems is Map) {
+            for (final value in problems.values) {
+              if (value is Map<String, dynamic>) {
                 issuesList.add({
                   'type': value['titulo'] ?? 'Problema',
                   'description': value['detalle'] ?? 'Sin descripción',
                 });
               }
-            });
+            }
           }
         }
-        
-        // Procesar recomendaciones (ahora es un array de strings simples)
+
+        // Procesar recomendaciones (solo listas de strings)
         List<String> recommendationsList = [];
-        if (caseData['recommendations'] != null) {
-          if (caseData['recommendations'] is List) {
-            // Nuevo formato: array de strings simples
-            final recommendationsArray = caseData['recommendations'] as List<dynamic>;
-            for (final recommendation in recommendationsArray) {
-              if (recommendation is String && recommendation.isNotEmpty) {
-                recommendationsList.add(recommendation);
-              } else {
-                // Para compatibilidad con formato anterior (objetos con 'text')
-                if (recommendation is Map<String, dynamic> && recommendation['text'] != null) {
-                  recommendationsList.add(recommendation['text'].toString());
-                } else {
-                  // Convertir a string y agregar si no está vacío
-                  final recText = recommendation.toString();
-                  if (recText.isNotEmpty && recText != 'null') {
-                    recommendationsList.add(recText);
-                  }
-                }
-              }
-            }
-          } else if (caseData['recommendations'] is String && caseData['recommendations'].toString().isNotEmpty) {
-            // Formato anterior: texto (por compatibilidad)
-            final recommendations = caseData['recommendations'].toString();
-            
-            // Verificar si es un JSON string que necesita ser parseado
-            if (recommendations.startsWith('{') || recommendations.startsWith('[')) {
-              try {
-                final parsed = jsonDecode(recommendations);
-                if (parsed is Map) {
-                  // Si es un mapa, extraer los valores
-                  parsed.values.forEach((value) {
-                    if (value.toString().isNotEmpty) {
-                      recommendationsList.add(value.toString());
-                    }
-                  });
-                } else if (parsed is List) {
-                  // Si es una lista, procesar cada elemento
-                  for (final item in parsed) {
-                    if (item.toString().isNotEmpty) {
-                      recommendationsList.add(item.toString());
-                    }
-                  }
-                }
-              } catch (e) {
-                // Si falla el parsing, usar como texto normal
-                recommendationsList = recommendations
-                    .split('\n')
-                    .where((rec) => rec.trim().isNotEmpty)
-                    .map((rec) => rec.trim())
-                    .toList();
-              }
-            } else {
-              // Dividir por líneas si contiene saltos de línea
-              recommendationsList = recommendations
-                  .split('\n')
-                  .where((rec) => rec.trim().isNotEmpty)
-                  .map((rec) => rec.trim().replaceAll('• ', ''))
-                  .toList();
+        if (caseData['recommendations'] is List) {
+          final recommendationsArray =
+              caseData['recommendations'] as List<dynamic>;
+          for (final recommendation in recommendationsArray) {
+            if (recommendation is String && recommendation.isNotEmpty) {
+              recommendationsList.add(recommendation);
             }
           }
         }
         final arteIdArray = caseData['arte_id'] as List<dynamic>? ?? [];
         final totalImages = arteIdArray.length;
 
-        // Obtener URLs de las imágenes desde el campo image_urls
+        // Obtener URLs de las imágenes
         List<String> imageUrls = [];
-        
-        
-        // Usar image_urls en lugar de arte_id para las URLs de las imágenes
+
         if (caseData['image_urls'] != null) {
           final imageUrlsData = caseData['image_urls'];
-          
           if (imageUrlsData is List) {
-            for (int i = 0; i < imageUrlsData.length; i++) {
-              final url = imageUrlsData[i];
+            for (final url in imageUrlsData) {
               if (url is String && url.isNotEmpty) {
                 imageUrls.add(url);
-              } else {
               }
-            }
-          } else {
-          }
-        } else {
-          // Intentar con otros nombres posibles
-          final possibleKeys = ['imageUrls', 'imageurl', 'image_url', 'urls'];
-          for (final key in possibleKeys) {
-            if (caseData[key] != null) {
             }
           }
         }
-        
-        
+
         // Solo hacer setState si el widget está montado
         if (mounted) {
-          print('AnalysisResult: Actualizando estado con ${imageUrls.length} imágenes');
           setState(() {
             _isLoading = false;
-            _imageUrls = imageUrls.reversed.toList(); // Invertir orden: más recientes primero
-            _currentImageIndex = 0; // La primera imagen ahora es la más reciente
-            print('AnalysisResult: URLs de imágenes: ${_imageUrls}');
+            _imageUrls = imageUrls.reversed.toList();
+            _currentImageIndex = 0;
             _analysisData = {
               'projectName': caseData['name'],
               'analysisDate': caseData['created_at'],
               'totalImages': totalImages,
-              'invalidImages': issuesList.length, 
+              'invalidImages': issuesList.length,
               'complianceScore': caseData['score'] ?? 0,
               'issues': issuesList,
               'recommendations': recommendationsList,
@@ -210,10 +129,9 @@ class _AnalysisResultState extends State<AnalysisResult> {
           _analysisData = null;
         });
       }
-      print('Error cargando análisis: $e');
+      throw ('Error cargando análisis: $e');
     }
   }
-
 
   Future<void> _handleLogout() async {
     try {
@@ -222,32 +140,21 @@ class _AnalysisResultState extends State<AnalysisResult> {
         context.pushReplacement('/login');
       }
     } catch (e) {
-      print('Error al cerrar sesión: $e');
+      throw ('Error al cerrar sesión: $e');
     }
   }
 
-  /// Callback que se ejecuta cada vez que la IA responde y actualiza la base de datos
+  /// Callback cada vez que la IA responde
   Future<void> _handleAnalysisUpdate() async {
-    print('AnalysisResult: _handleAnalysisUpdate llamado');
-    
     try {
-      // Recargar los datos desde la base de datos
-      print('AnalysisResult: Recargando datos desde la base de datos...');
       await _loadAnalysisResultsFromDB();
-      
-      // Como las imágenes están invertidas, la primera imagen (índice 0) es siempre la más reciente
       if (_imageUrls.isNotEmpty && mounted) {
-        print('AnalysisResult: Actualizando índice de imagen a 0 (${_imageUrls.length} imágenes disponibles)');
         setState(() {
-          _currentImageIndex = 0; // Mostrar la primera imagen (más reciente)
+          _currentImageIndex = 0;
         });
-      } else {
-        print('AnalysisResult: No hay imágenes o widget no montado');
-      }
-      
-      print('AnalysisResult: _handleAnalysisUpdate completado');
+      } else {}
     } catch (e) {
-      print('AnalysisResult: Error en _handleAnalysisUpdate: $e');
+      throw ('Error: $e');
     }
   }
 
@@ -265,10 +172,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
         ),
         title: const Text(
           'Resultados del Análisis - Nestlé Validation Tool',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         actions: [
           Padding(
@@ -301,9 +205,9 @@ class _AnalysisResultState extends State<AnalysisResult> {
                 color: Color(0xFF004B93),
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Contenido
             Expanded(
               child: _isLoading
@@ -321,16 +225,11 @@ class _AnalysisResultState extends State<AnalysisResult> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: Color(0xFF004B93),
-          ),
+          CircularProgressIndicator(color: Color(0xFF004B93)),
           SizedBox(height: 16),
           Text(
             'Analizando resultados...',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ],
       ),
@@ -346,41 +245,35 @@ class _AnalysisResultState extends State<AnalysisResult> {
         children: [
           // Resumen general
           _buildSummaryCards(),
-          
+
           const SizedBox(height: 32),
-          
 
-
-          // Layout de 3 columnas: Problemas+Recomendaciones, Imagen, Chat
           SizedBox(
-            height: 600, // Altura fija para evitar problemas de layout
+            height: 600,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Columna 1: Problemas y Recomendaciones juntos
+                // Problemas y Recomendaciones juntos
                 Expanded(
                   flex: 1,
                   child: _buildProblemsAndRecommendationsSection(),
                 ),
-                
+
                 const SizedBox(width: 16),
-                
-                // Columna 2: Imagen en el centro
-                Expanded(
-                  flex: 1,
-                  child: _buildImageSection(),
-                ),
-                
+
+                // Imagen
+                Expanded(flex: 1, child: _buildImageSection()),
+
                 const SizedBox(width: 16),
-                
-                // Columna 3: Chat con IA
+
+                // Chat
                 Expanded(
                   flex: 1,
                   child: ChatComponent(
                     projectName: widget.projectName,
                     analysisData: _analysisData,
                     caseSerenityId: widget.serenityId,
-                    onAnalysisUpdated: _handleAnalysisUpdate, // Agregar el callback
+                    onAnalysisUpdated: _handleAnalysisUpdate,
                   ),
                 ),
               ],
@@ -417,14 +310,21 @@ class _AnalysisResultState extends State<AnalysisResult> {
             'Puntuación',
             '${_analysisData!['complianceScore']}%',
             Icons.analytics,
-            _analysisData!['complianceScore'] >= 80 ? Colors.green : Colors.orange,
+            _analysisData!['complianceScore'] >= 80
+                ? Colors.green
+                : Colors.orange,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
+  Widget _buildSummaryCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -457,13 +357,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
         ],
       ),
     );
@@ -511,11 +405,13 @@ class _AnalysisResultState extends State<AnalysisResult> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ...(_analysisData!['issues'] as List).map((issue) => _buildIssueItem(issue)),
-                  
+                  ...(_analysisData!['issues'] as List).map(
+                    (issue) => _buildIssueItem(issue),
+                  ),
+
                   const SizedBox(height: 24),
-                  
-                  // Sección de Recomendaciones
+
+                  // Recomendaciones
                   Text(
                     'Recomendaciones',
                     style: TextStyle(
@@ -525,32 +421,35 @@ class _AnalysisResultState extends State<AnalysisResult> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ...(_analysisData!['recommendations'] as List).asMap().entries.map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF004B93),
-                              shape: BoxShape.circle,
-                            ),
+                  ...(_analysisData!['recommendations'] as List)
+                      .asMap()
+                      .entries
+                      .map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 4),
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF004B93),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _parseRecommendationText(entry.value),
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _parseRecommendationText(entry.value),
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -584,14 +483,17 @@ class _AnalysisResultState extends State<AnalysisResult> {
             children: [
               if (_imageUrls.length > 1)
                 IconButton(
-                  onPressed: _currentImageIndex > 0 ? () {
-                    setState(() {
-                      _currentImageIndex--;
-                    });
-                  } : null,
+                  onPressed: _currentImageIndex > 0
+                      ? () {
+                          setState(() {
+                            _currentImageIndex--;
+                          });
+                        }
+                      : null,
                   icon: const Icon(Icons.arrow_back_ios),
                 ),
-              Text( 'Imágenes',
+              Text(
+                'Imágenes',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: const Color(0xFF004B93),
                   fontWeight: FontWeight.bold,
@@ -599,11 +501,13 @@ class _AnalysisResultState extends State<AnalysisResult> {
               ),
               if (_imageUrls.length > 1)
                 IconButton(
-                  onPressed: _currentImageIndex < _imageUrls.length - 1 ? () {
-                    setState(() {
-                      _currentImageIndex++;
-                    });
-                  } : null,
+                  onPressed: _currentImageIndex < _imageUrls.length - 1
+                      ? () {
+                          setState(() {
+                            _currentImageIndex++;
+                          });
+                        }
+                      : null,
                   icon: const Icon(Icons.arrow_forward_ios),
                 ),
             ],
@@ -618,7 +522,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
                       fit: BoxFit.contain,
                       width: double.infinity,
                       errorBuilder: (context, error, stackTrace) {
-                        print('Error cargando imagen: $error');
                         return Container(
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
@@ -628,7 +531,11 @@ class _AnalysisResultState extends State<AnalysisResult> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.broken_image, size: 80, color: Colors.grey),
+                                const Icon(
+                                  Icons.broken_image,
+                                  size: 80,
+                                  color: Colors.grey,
+                                ),
                                 const SizedBox(height: 16),
                                 const Text(
                                   'No se pudo cargar la imagen',
@@ -638,14 +545,6 @@ class _AnalysisResultState extends State<AnalysisResult> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                Text(
-                                  'URL: ${_imageUrls[_currentImageIndex]}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[600],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
                               ],
                             ),
                           ),
@@ -680,10 +579,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                           SizedBox(height: 16),
                           Text(
                             'Imagen no disponible',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
                           ),
                         ],
                       ),
@@ -721,10 +617,7 @@ class _AnalysisResultState extends State<AnalysisResult> {
                 const SizedBox(height: 4),
                 Text(
                   issue['description'] ?? 'Sin descripción disponible',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ],
             ),
@@ -734,13 +627,8 @@ class _AnalysisResultState extends State<AnalysisResult> {
     );
   }
 
-
-
   String _parseRecommendationText(dynamic recommendation) {
     if (recommendation == null) return 'Sin recomendación disponible';
-    
-    // Como ahora solo extraemos el campo 'text' en el procesamiento,
-    // esta función solo necesita limpiar el string
     return recommendation.toString().trim();
   }
 }

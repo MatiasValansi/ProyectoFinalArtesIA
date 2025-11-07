@@ -7,26 +7,26 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Cargar variables de entorno antes de todo
   try {
     await dotenv.load(fileName: "../../.env");
   } catch (e) {
-    print('ERROR: No se pudo cargar el .env: $e');
+    throw Exception('No se pudo cargar el archivo .env: $e');
   }
 
   // Inicializar Firebase
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (e) {
-    print('ERROR: No se pudo inicializar Firebase: $e');
+    throw Exception('No se pudo inicializar Firebase: $e');
   }
 
   // Inicializar Supabase
   try {
     await SupabaseConfig.initialize();
   } catch (e) {
-    print('ERROR: No se pudo inicializar Supabase: $e');
+    throw Exception('No se pudo inicializar Supabase: $e');
   }
 
   runApp(const MainApp());

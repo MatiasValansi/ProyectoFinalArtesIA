@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:html' as html;
@@ -8,7 +7,6 @@ import '../../core/services/serenity_api_service.dart';
 import '../../database/cases_service.dart';
 import '../../database/storage_service.dart';
 import '../../models/case_model.dart';
-
 
 class AnalisisResultado {
   final Map<String, dynamic> problemas;
@@ -54,7 +52,6 @@ class _NewArtState extends State<NewArt> {
   List<html.File> _selectedFiles = [];
   bool _isDragOver = false;
   bool _isUploading = false;
-  String _uploadStatus = '';
 
   @override
   void dispose() {
@@ -63,19 +60,20 @@ class _NewArtState extends State<NewArt> {
   }
 
   void _handleFileSelection() {
-    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-    uploadInput.multiple = false; // Solo un archivo
+    final html.FileUploadInputElement uploadInput =
+        html.FileUploadInputElement();
+    uploadInput.multiple = false;
     uploadInput.accept = '.jpg,.jpeg,.png';
-    
+
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
       if (files != null && files.isNotEmpty) {
         setState(() {
-          _selectedFiles = [files[0]]; // Solo tomar el primer archivo
+          _selectedFiles = [files[0]];
         });
       }
     });
-    
+
     uploadInput.click();
   }
 
@@ -111,7 +109,6 @@ class _NewArtState extends State<NewArt> {
     });
 
     try {
-      // Obtener los datos del usuario actual
       final userData = await _authService.getCurrentUserData();
       if (userData == null) {
         throw Exception('No se pudo obtener la información del usuario');
@@ -121,73 +118,42 @@ class _NewArtState extends State<NewArt> {
       if (userId == null) {
         throw Exception('ID de usuario no válido');
       }
-
-      // Procesar la imagen seleccionada
       final file = _selectedFiles.first;
       String? supabaseImageUrl;
-      
+
       try {
-        setState(() {
-          _uploadStatus = 'Procesando imagen: ${file.name}';
-        });
-
-        // 1. Subir imagen a Supabase Storage primero
-        setState(() {
-          _uploadStatus = 'Guardando imagen en servidor...';
-        });
-
+        // Subir imagen a Supabase
         supabaseImageUrl = await _storageService.uploadImageFromWeb(
           file,
-          customPath: 'cases/${userId}', // Organizar por usuario
-          onProgress: (status) {
-            if (mounted) {
-              setState(() {
-                _uploadStatus = status;
-              });
-            }
-          },
+          customPath: 'cases/${userId}',
         );
-        
-        // 2. Inicializar chat para análisis
-        setState(() {
-          _uploadStatus = 'Inicializando análisis...';
-        });
-        
-        final chatId = await _serenityApiService.initializeChat();
-        
-        // 3. Subir imagen como volatile knowledge para análisis IA
-        setState(() {
-          _uploadStatus = 'Preparando para análisis IA...';
-        });
-        
-        final volatileKnowledgeId = await _serenityApiService.uploadImage(file);
-          
-        // Una vez que el volatile knowledge esté listo, ejecutar el análisis
-        setState(() {
-          _uploadStatus = 'Ejecutando análisis...';
-        });
-        
-        final analysisResponse = await _serenityApiService.executeAnalysis(chatId, volatileKnowledgeId);
 
-        // Crear el caso con la URL de Supabase
+        // Inicializar chat
+        final chatId = await _serenityApiService.initializeChat();
+
+        // Subir imagen para a la IA
+        final volatileKnowledgeId = await _serenityApiService.uploadImage(file);
+
+        // Una vez que el volatile knowledge esté listo, ejecutar el análisis
+        final analysisResponse = await _serenityApiService.executeAnalysis(
+          chatId,
+          volatileKnowledgeId,
+        );
+
+        // Crear el caso en Supabase
         final createdCase = await _casesService.createCaseFromModel(
           CaseModel(
             name: _productNameController.text.trim(),
             serenityId: analysisResponse.instanceId,
             userId: userId,
             arteId: [volatileKnowledgeId],
-            imageUrls: [supabaseImageUrl], // Guardar URL de Supabase como lista
+            imageUrls: [supabaseImageUrl],
           ),
         );
-        // Ahora necesitamos obtener la respuesta completa del análisis para extraer los resultados
-        // Nota: analysisResponse solo contiene información básica, necesitamos la respuesta completa del agente
-        setState(() {
-          _uploadStatus = 'Guardando resultados del análisis...';
-        });
 
-        // Extraer y guardar los resultados del análisis si están disponibles
+        // Extraer y guardar los resultados del análisis
         await _extractAndSaveAnalysisResults(analysisResponse, createdCase.id!);
-        
+
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -195,43 +161,28 @@ class _NewArtState extends State<NewArt> {
               backgroundColor: Colors.green,
             ),
           );
-          
-          // Navegar de vuelta al home
           context.go('/home');
         }
-        
       } catch (fileError) {
-  print('ERROR: no se pudo procesar la imagen ${file.name}: $fileError');
-        
         // Limpiar imagen de Supabase si se subió pero falló el análisis
         if (supabaseImageUrl != null) {
           try {
             final fileName = supabaseImageUrl.split('/').last;
             await _storageService.deleteImage('cases/${userId}/$fileName');
           } catch (deleteError) {
-            print('Error al eliminar imagen de Supabase: $deleteError');
+            // No hacer nada si falla
           }
         }
-        
-        // Mostrar error específico al usuario
+
+        // Mostrar error al usuario
         if (mounted) {
-          String errorMessage = 'Error procesando ${file.name}';
-          
-          if (fileError.toString().contains('Storage')) {
-            errorMessage = 'Error al guardar imagen en servidor. Intenta nuevamente.';
-          } else if (fileError.toString().contains('timeout') || fileError.toString().contains('Request timeout')) {
-            errorMessage = 'Timeout procesando ${file.name}. El archivo puede ser muy grande o la conexión lenta. Intenta con un archivo más pequeño.';
-          } else if (fileError.toString().contains('Network error')) {
-            errorMessage = 'Error de conexión procesando ${file.name}. Verifica tu conexión a internet.';
-          } else {
-            errorMessage = 'Error procesando ${file.name}: ${fileError.toString()}';
-          }
-          
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
+            const SnackBar(
+              content: Text(
+                'Ocurrió un error al procesar la imagen. Intenta nuevamente.',
+              ),
               backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 6),
+              duration: Duration(seconds: 6),
             ),
           );
         }
@@ -249,17 +200,19 @@ class _NewArtState extends State<NewArt> {
       if (mounted) {
         setState(() {
           _isUploading = false;
-          _uploadStatus = '';
         });
       }
     }
   }
 
   /// Extraer y guardar los resultados del análisis
-  Future<void> _extractAndSaveAnalysisResults(dynamic analysisResponse, String caseId) async {
+  Future<void> _extractAndSaveAnalysisResults(
+    dynamic analysisResponse,
+    String caseId,
+  ) async {
     try {
-      // Verificar si hay actionResults en la respuesta
-      if (analysisResponse.actionResults == null || 
+      // Ver si se hizo el analisis
+      if (analysisResponse.actionResults == null ||
           analysisResponse.actionResults['conclusion'] == null) {
         return;
       }
@@ -270,25 +223,25 @@ class _NewArtState extends State<NewArt> {
       if (conclusion['jsonContent'] != null) {
         analisis = conclusion['jsonContent'];
       } else {
-        // Intentar parsear desde content si no hay jsonContent
         try {
           analisis = jsonDecode(conclusion['content']);
         } catch (e) {
-          print('Error al parsear JSON: $e');
-          return;
+          throw ('Error al parsear JSON: $e');
         }
       }
 
       // Preparar los datos para actualizar
       final updateData = <String, dynamic>{};
 
-      // Guardar problemas (convertir de objeto a array de problemas)
+      // Guardar problemas
       if (analisis['problemas'] != null) {
         final problemsMap = analisis['problemas'] as Map<String, dynamic>;
         final problemsList = <Map<String, dynamic>>[];
 
         problemsMap.forEach((key, value) {
-          if (value is Map<String, dynamic> && value.containsKey('titulo') && value.containsKey('detalle')) {
+          if (value is Map<String, dynamic> &&
+              value.containsKey('titulo') &&
+              value.containsKey('detalle')) {
             problemsList.add({
               'id': key,
               'titulo': value['titulo'],
@@ -300,31 +253,32 @@ class _NewArtState extends State<NewArt> {
         updateData['problems'] = problemsList;
       }
 
-      // Guardar recomendaciones (convertir a array de strings simples)
+      // Guardar recomendaciones
       if (analisis['recomendaciones'] != null) {
         final recommendationsList = <String>[];
 
         if (analisis['recomendaciones'] is Map) {
-          // Convertir las recomendaciones de objeto a array de strings
-          final recomendaciones = analisis['recomendaciones'] as Map<String, dynamic>;
+          // Convertir las recomendaciones a array
+          final recomendaciones =
+              analisis['recomendaciones'] as Map<String, dynamic>;
           recomendaciones.values.forEach((value) {
             recommendationsList.add(value.toString());
           });
         } else if (analisis['recomendaciones'] is List) {
-          // Si ya es una lista, extraer solo el texto
+          // Extraer texto si es una lista
           final recomendaciones = analisis['recomendaciones'] as List;
           for (final recommendation in recomendaciones) {
             recommendationsList.add(recommendation.toString());
           }
         } else if (analisis['recomendaciones'] is String) {
-          // Si es un string, agregarlo directamente
+          // Agregar directamente si es un string
           recommendationsList.add(analisis['recomendaciones'].toString());
         }
 
         updateData['recommendations'] = recommendationsList;
       }
 
-      // Guardar score (como número)
+      // Guardar score
       if (analisis['puntuacion'] != null) {
         double? score;
         if (analisis['puntuacion'] is num) {
@@ -337,13 +291,15 @@ class _NewArtState extends State<NewArt> {
         }
       }
 
-      // Actualizar el caso solo si hay datos para actualizar
+      // Actualizar el caso
       if (updateData.isNotEmpty) {
-        await _casesService.client.from('cases').update(updateData).eq('id', caseId);
+        await _casesService.client
+            .from('cases')
+            .update(updateData)
+            .eq('id', caseId);
       }
-
     } catch (e) {
-      print('ERROR al extraer y guardar resultados del análisis: $e');
+      throw ('ERROR: $e');
     }
   }
 
@@ -354,7 +310,7 @@ class _NewArtState extends State<NewArt> {
         context.pushReplacement('/login');
       }
     } catch (e) {
-      print('Error al cerrar sesión: $e');
+      throw ('ERROR: $e');
     }
   }
 
@@ -372,10 +328,7 @@ class _NewArtState extends State<NewArt> {
         ),
         title: const Text(
           'Nuevo Proyecto - Nestlé Validation Tool',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         actions: [
           Padding(
@@ -408,16 +361,13 @@ class _NewArtState extends State<NewArt> {
                 color: Color(0xFF004B93),
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Campo nombre del producto
             const Text(
               'Nombre del producto',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -435,19 +385,16 @@ class _NewArtState extends State<NewArt> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
-            // Arte (JPG, PNG o PDF)
+
+            // Arte
             const Text(
               'Arte (JPG, PNG o PDF)',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),
-            
+
             // Área de drag & drop
             Expanded(
               child: Container(
@@ -456,7 +403,9 @@ class _NewArtState extends State<NewArt> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: _isDragOver ? const Color(0xFF004B93) : Colors.grey[300]!,
+                    color: _isDragOver
+                        ? const Color(0xFF004B93)
+                        : Colors.grey[300]!,
                     width: _isDragOver ? 2 : 1,
                   ),
                 ),
@@ -465,10 +414,9 @@ class _NewArtState extends State<NewArt> {
                     : _buildFileList(),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
-            // Botones
+
             Row(
               children: [
                 const SizedBox(width: 16),
@@ -489,7 +437,9 @@ class _NewArtState extends State<NewArt> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : const Text(
@@ -525,24 +475,14 @@ class _NewArtState extends State<NewArt> {
             const SizedBox(height: 8),
             Text(
               'Formatos soportados: JPG, PNG, PDF',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 24),
-            Icon(
-              Icons.folder,
-              size: 48,
-              color: Colors.orange[400],
-            ),
+            Icon(Icons.folder, size: 48, color: Colors.orange[400]),
             const SizedBox(height: 16),
             Text(
               'Arrastra tu archivo aquí.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
             TextButton(
@@ -566,16 +506,13 @@ class _NewArtState extends State<NewArt> {
       return const Center(
         child: Text(
           'No hay archivos seleccionados',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey,
-          ),
+          style: TextStyle(fontSize: 16, color: Colors.grey),
         ),
       );
     }
 
     final file = _selectedFiles.first;
-    
+
     return Column(
       children: [
         Padding(
@@ -697,8 +634,6 @@ class _NewArtState extends State<NewArt> {
     await reader.onLoad.first;
     return reader.result as String;
   }
-
-
 
   String _formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';

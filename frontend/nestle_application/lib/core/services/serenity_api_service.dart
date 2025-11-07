@@ -5,34 +5,30 @@ import '../config/app_config.dart';
 import 'package:http/http.dart' as http;
 
 class SerenityApiService {
-
   /// Inicializar una nueva conversación
   Future<String> initializeChat() async {
     int maxRetries = 3;
     int currentRetry = 0;
-    
+
     while (currentRetry < maxRetries) {
       try {
-  final uri = Uri.parse(AppConfig.iaApiBaseUrl + AppConfig.nestleCheckAgentEndpoint);
-        
+        final uri = Uri.parse(
+          AppConfig.iaApiBaseUrl + AppConfig.nestleCheckAgentEndpoint,
+        );
+
         final headers = {
           'Content-Type': 'application/json',
           'X-API-KEY': AppConfig.iaApiKey,
         };
-        
+
         final body = json.encode([
-          {
-            "key": "message",
-            "value": "Inicializar chat"
-          }
+          {"key": "message", "value": "Inicializar chat"},
         ]);
-        
-        final response = await http.post(
-          uri, 
-          headers: headers, 
-          body: body,
-        ).timeout(const Duration(seconds: 30));
-        
+
+        final response = await http
+            .post(uri, headers: headers, body: body)
+            .timeout(const Duration(seconds: 30));
+
         if (response.statusCode == 200) {
           final jsonData = json.decode(response.body);
           return jsonData['instanceId'] ?? '';
@@ -42,13 +38,15 @@ class SerenityApiService {
       } catch (e) {
         currentRetry++;
         if (currentRetry >= maxRetries) {
-          throw Exception('Error al inicializar chat después de $maxRetries intentos: $e');
+          throw Exception(
+            'Error al inicializar chat después de $maxRetries intentos: $e',
+          );
         }
-        
+
         await Future.delayed(Duration(seconds: currentRetry * 2));
       }
     }
-    
+
     throw Exception('Error inesperado al inicializar chat');
   }
 
@@ -66,7 +64,6 @@ class SerenityApiService {
         request.open('POST', AppConfig.volatileKnowledgeUrl);
         request.setRequestHeader('X-API-KEY', AppConfig.iaApiKey);
 
-        // Crear completer para manejar la respuesta async
         final completer = Completer<String>();
         request.onLoadEnd.listen((e) {
           if (request.status == 200 && request.responseText != null) {
@@ -83,7 +80,9 @@ class SerenityApiService {
               completer.completeError('Error parsing response: $e');
             }
           } else {
-            completer.completeError('HTTP ${request.status}: ${request.responseText}');
+            completer.completeError(
+              'HTTP ${request.status}: ${request.responseText}',
+            );
           }
         });
 
@@ -95,15 +94,16 @@ class SerenityApiService {
           completer.completeError('Request timeout');
         });
 
-        request.timeout = 60000; // 1 minuto para upload
+        request.timeout = 60000;
         request.send(formData);
 
         return await completer.future;
-
       } catch (e) {
         currentRetry++;
         if (currentRetry >= maxRetries) {
-          throw Exception('Error al subir imagen después de $maxRetries intentos: $e');
+          throw Exception(
+            'Error al subir imagen después de $maxRetries intentos: $e',
+          );
         }
 
         await Future.delayed(Duration(seconds: currentRetry * 2));
@@ -117,37 +117,34 @@ class SerenityApiService {
   Future<AnalysisResponse> executeAnalysis(String chatId, String fileId) async {
     int maxRetries = 3;
     int currentRetry = 0;
-    
+
     while (currentRetry < maxRetries) {
       try {
-  final uri = Uri.parse(AppConfig.iaApiBaseUrl + AppConfig.nestleCheckAgentEndpoint);
-        
+        final uri = Uri.parse(
+          AppConfig.iaApiBaseUrl + AppConfig.nestleCheckAgentEndpoint,
+        );
+
         final headers = {
           'Content-Type': 'application/json',
           'X-API-KEY': AppConfig.iaApiKey,
         };
-        
+
         final body = json.encode([
-          {
-            "key": "chatId",
-            "value": chatId
-          },
+          {"key": "chatId", "value": chatId},
           {
             "key": "message",
-            "value": "Analiza esta imagen según los estándares de Nestlé"
+            "value": "Analiza esta imagen según los estándares de Nestlé",
           },
           {
             "key": "volatileKnowledgeIds",
-            "value": [fileId]
-          }
+            "value": [fileId],
+          },
         ]);
-        
-        final response = await http.post(
-          uri, 
-          headers: headers, 
-          body: body,
-        ).timeout(const Duration(seconds: 600));
-        
+
+        final response = await http
+            .post(uri, headers: headers, body: body)
+            .timeout(const Duration(seconds: 600));
+
         if (response.statusCode == 200) {
           final jsonData = json.decode(response.body);
           return AnalysisResponse.fromJson(jsonData);
@@ -157,14 +154,16 @@ class SerenityApiService {
       } catch (e) {
         currentRetry++;
         if (currentRetry >= maxRetries) {
-          throw Exception('Error al ejecutar análisis después de $maxRetries intentos: $e');
+          throw Exception(
+            'Error al ejecutar análisis después de $maxRetries intentos: $e',
+          );
         }
-        
+
         // Esperar antes del siguiente intento
         await Future.delayed(Duration(seconds: currentRetry * 3));
       }
     }
-    
+
     throw Exception('Error inesperado al ejecutar análisis');
   }
 }
@@ -246,4 +245,3 @@ class AnalysisResponse {
     };
   }
 }
-

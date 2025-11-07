@@ -30,11 +30,14 @@ final appRouter = GoRouter(
     GoRoute(path: '/login', builder: (context, state) => Login()),
     GoRoute(path: '/home', builder: (context, state) => const Home()),
     GoRoute(path: '/new-art', builder: (context, state) => const NewArt()),
-    GoRoute(path: '/analysis/:projectName', builder: (context, state) {
-      final projectName = state.pathParameters['projectName']!;
-      final serenityId = state.uri.queryParameters['serenityId'];
-      return AnalysisResult(projectName: projectName, serenityId: serenityId);
-    }),
+    GoRoute(
+      path: '/analysis/:projectName',
+      builder: (context, state) {
+        final projectName = state.pathParameters['projectName']!;
+        final serenityId = state.uri.queryParameters['serenityId'];
+        return AnalysisResult(projectName: projectName, serenityId: serenityId);
+      },
+    ),
     GoRoute(
       path: '/admin-users',
       builder: (context, state) => const AdminUsersScreen(),
@@ -46,13 +49,11 @@ final appRouter = GoRouter(
         final serenityId = state.uri.queryParameters['serenityId'];
         final caseId = state.uri.queryParameters['caseId'];
         return SupervisorAnalysisReview(
-          projectName: projectName, 
+          projectName: projectName,
           serenityId: serenityId,
-          caseId: caseId
+          caseId: caseId,
         );
       },
     ),
-
-
   ],
-); // GoRouter
+);

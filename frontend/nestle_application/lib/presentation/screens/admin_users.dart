@@ -128,7 +128,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             items: const [
               DropdownMenuItem(value: 'USUARIO', child: Text('USUARIO')),
               DropdownMenuItem(value: 'SUPERVISOR', child: Text('SUPERVISOR')),
-              DropdownMenuItem(value: 'ADMINISTRADOR', child: Text('ADMINISTRADOR')),
+              DropdownMenuItem(
+                value: 'ADMINISTRADOR',
+                child: Text('ADMINISTRADOR'),
+              ),
             ],
             onChanged: (value) => selectedRole = value!,
           ),
@@ -139,8 +142,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(selectedRole),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF004B93)),
-              child: const Text('Actualizar', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF004B93),
+              ),
+              child: const Text(
+                'Actualizar',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -154,7 +162,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Confirmar eliminación'),
-          content: Text('¿Estás seguro de que deseas eliminar al usuario $email?'),
+          content: Text(
+            '¿Estás seguro de que deseas eliminar al usuario $email?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -163,7 +173,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -230,7 +243,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Panel izquierdo - Crear usuario
+            // Crear usuario
             Expanded(
               flex: 1,
               child: Card(
@@ -323,7 +336,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                   ),
                                 ),
                                 onPressed: _isLoading ? null : _createUser,
-                                icon: const Icon(Icons.add, color: Colors.white),
+                                icon: const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                ),
                                 label: const Text(
                                   'Crear Usuario',
                                   style: TextStyle(
@@ -342,10 +358,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(width: 20),
-            
-            // Panel derecho - Lista de usuarios
+
+            // Lista de usuarios
             Expanded(
               flex: 2,
               child: Card(
@@ -363,7 +379,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
-                          )
+                          ),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -371,78 +387,90 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         child: _isLoading
                             ? const Center(child: CircularProgressIndicator())
                             : _users.isEmpty
-                                ? const Center(
-                                    child: Text(
-                                      'No hay usuarios registrados',
-                                      style: TextStyle(fontSize: 16),
+                            ? const Center(
+                                child: Text(
+                                  'No hay usuarios registrados',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: _users.length,
+                                itemBuilder: (context, index) {
+                                  final user = _users[index];
+                                  final role =
+                                      user['rol']?.toString() ?? 'USUARIO';
+
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 4,
                                     ),
-                                  )
-                                : ListView.builder(
-                                    itemCount: _users.length,
-                                    itemBuilder: (context, index) {
-                                      final user = _users[index];
-                                      final role = user['rol']?.toString() ?? 'USUARIO';
-                                      
-                                      return Card(
-                                        margin: const EdgeInsets.symmetric(vertical: 4),
-                                        child: ListTile(
-                                          leading: CircleAvatar(
-                                            backgroundColor: _getRoleColor(role).withAlpha((0.2 * 255).toInt()),
-                                            child: Icon(
-                                              _getRoleIcon(role),
-                                              color: _getRoleColor(role),
-                                            ),
-                                          ),
-                                          title: Text(
-                                            user['email'] ?? 'Sin email',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          subtitle: Container(
-                                            margin: const EdgeInsets.only(top: 4),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: _getRoleColor(role).withAlpha((0.1 * 255).toInt()),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              role,
-                                              style: TextStyle(
-                                                color: _getRoleColor(role),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                          trailing: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                icon: const Icon(Icons.edit),
-                                                onPressed: () => _updateUserRole(
-                                                  user['id'].toString(),
-                                                  role,
-                                                ),
-                                                tooltip: 'Cambiar rol',
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.delete, color: Colors.red),
-                                                onPressed: () => _deleteUser(
-                                                  user['id'].toString(),
-                                                  user['email'] ?? 'Sin email',
-                                                ),
-                                                tooltip: 'Eliminar usuario',
-                                              ),
-                                            ],
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: _getRoleColor(
+                                          role,
+                                        ).withAlpha((0.2 * 255).toInt()),
+                                        child: Icon(
+                                          _getRoleIcon(role),
+                                          color: _getRoleColor(role),
+                                        ),
+                                      ),
+                                      title: Text(
+                                        user['email'] ?? 'Sin email',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      subtitle: Container(
+                                        margin: const EdgeInsets.only(top: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _getRoleColor(
+                                            role,
+                                          ).withAlpha((0.1 * 255).toInt()),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
+                                        child: Text(
+                                          role,
+                                          style: TextStyle(
+                                            color: _getRoleColor(role),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.edit),
+                                            onPressed: () => _updateUserRole(
+                                              user['id'].toString(),
+                                              role,
+                                            ),
+                                            tooltip: 'Cambiar rol',
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete,
+                                              color: Colors.red,
+                                            ),
+                                            onPressed: () => _deleteUser(
+                                              user['id'].toString(),
+                                              user['email'] ?? 'Sin email',
+                                            ),
+                                            tooltip: 'Eliminar usuario',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                       ),
                     ],
                   ),

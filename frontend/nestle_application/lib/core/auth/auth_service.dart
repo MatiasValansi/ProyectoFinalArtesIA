@@ -12,7 +12,7 @@ class AuthService {
   /// Guardamos el usuario actual en caché
   Map<String, dynamic>? currentUserData;
 
-  /// Obtenemos los datos del usuario actual desde Supabase
+  /// Obtenemos los datos del usuario actual
   Future<Map<String, dynamic>?> getCurrentUserData() async {
     if (currentUserData != null) {
       return currentUserData;
@@ -22,7 +22,7 @@ class AuthService {
     if (firebaseUser == null) return null;
 
     try {
-      // Buscamos el usuario en Supabase por auth_uid
+      // Buscamos el usuario
       final userData = await userService.getUserByAuthUid(firebaseUser.uid);
 
       if (userData != null) {
@@ -30,7 +30,7 @@ class AuthService {
         return currentUserData;
       }
     } catch (e) {
-      print('Error obteniendo datos del usuario: $e');
+      throw Exception('Error obteniendo datos del usuario: $e');
     }
 
     return null;
@@ -48,13 +48,13 @@ class AuthService {
     return userData?['rol']?.toString().toUpperCase() == 'SUPERVISOR';
   }
 
-  /// Obtenemos el rol del usuario 
+  /// Obtenemos el rol del usuario
   Future<String?> getCurrentUserRole() async {
     final userData = await getCurrentUserData();
     return userData?['rol']?.toString();
   }
 
-  /// Obtenemos el email del usuario 
+  /// Obtenemos el email del usuario
   Future<String?> getCurrentUserEmail() async {
     final userData = await getCurrentUserData();
     return userData?['email']?.toString();
@@ -72,13 +72,12 @@ class AuthService {
         email: email,
         password: password,
       );
-      
+
       // Borramos caché de datos del usuario
       clearUserData();
       return true;
     } catch (e) {
-      print('Error en login: $e');
-      return false;
+      throw Exception('Error en login: $e');
     }
   }
 
@@ -88,8 +87,8 @@ class AuthService {
       clearUserData();
       await firebaseAuth.signOut();
     } catch (e) {
-      print('Error al cerrar sesión: $e');
       clearUserData();
+      throw Exception('Error al cerrar sesión: $e');
     }
   }
 }

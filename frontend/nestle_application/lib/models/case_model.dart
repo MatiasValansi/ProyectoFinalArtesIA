@@ -29,7 +29,6 @@ class CaseModel {
 
   /// Factory constructor para crear una instancia desde JSON
   factory CaseModel.fromJson(Map<String, dynamic> json) {
-    // Manejar arte_id como array
     List<String> arteIdList = [];
     if (json['arte_id'] != null) {
       if (json['arte_id'] is List) {
@@ -135,7 +134,7 @@ class CaseModel {
     return true;
   }
 
-  /// Metodo auxiliar para comparar valores dinámicos (puede ser Map, List, String, etc.)
+  /// Metodo auxiliar para comparar valores dinámicos
   bool _dynamicEquals(dynamic a, dynamic b) {
     if (a == null) return b == null;
     if (b == null) return false;

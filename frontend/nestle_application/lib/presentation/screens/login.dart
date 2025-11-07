@@ -29,7 +29,7 @@ class _LoginState extends State<Login> {
   }
 
   Future<void> _handleLogin() async {
-    if (_usernameController.text.trim().isEmpty || 
+    if (_usernameController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty) {
       _showSnackBar('Por favor complete todos los campos', Colors.red);
       return;
@@ -71,9 +71,9 @@ class _LoginState extends State<Login> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Fondo limpio
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF004B93), // Azul Nestlé
+        backgroundColor: const Color(0xFF004B93),
         title: const Text(
           'Nestlé Login',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
@@ -89,10 +89,7 @@ class _LoginState extends State<Login> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Logo Nestlé
-                Image.asset(
-                  "assets/images/NestléLogo.svg.png",
-                  height: 120,
-                ),
+                Image.asset("assets/images/NestléLogo.svg.png", height: 120),
                 const SizedBox(height: 30),
 
                 const Text(
@@ -107,7 +104,7 @@ class _LoginState extends State<Login> {
                 ),
                 const SizedBox(height: 30),
 
-                // Input Username
+                // User
                 TextField(
                   controller: _usernameController,
                   decoration: InputDecoration(
@@ -122,7 +119,7 @@ class _LoginState extends State<Login> {
                 ),
                 const SizedBox(height: 20),
 
-                // Input Password
+                // Pass
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
@@ -138,7 +135,6 @@ class _LoginState extends State<Login> {
                 ),
                 const SizedBox(height: 30),
 
-                // Botón login principal
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -156,7 +152,9 @@ class _LoginState extends State<Login> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : const Text(

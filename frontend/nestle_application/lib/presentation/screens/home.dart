@@ -7,7 +7,6 @@ import '../../core/controllers/user_controller.dart';
 import '../../database/cases_service.dart';
 import '../../database/user_service.dart';
 import '../../models/case_model.dart';
-import '../../models/user_model.dart';
 import '../widgets/filter_controls.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/unified_project_card.dart';
@@ -32,7 +31,7 @@ class _HomeState extends State<Home> {
   List<CaseModel> _userCases = [];
   List<Map<String, dynamic>> _allCasesWithUsers = [];
   bool _isLoading = true;
-  UserModel? _currentUser;
+  Map<String, dynamic>? _currentUser;
   String _searchQuery = '';
   String _filterStatus = 'all';
   String _userSearchQuery = '';
@@ -50,10 +49,11 @@ class _HomeState extends State<Home> {
       if (user != null) {
         setState(() {
           _currentUser = user;
-          _userEmail = user.email;
+          _userEmail = user['email'];
         });
       }
 
+      // Obtener rol
       final roleData = await _roleController.getUserRole();
       setState(() {
         _isAdmin = roleData['isAdmin'];
@@ -61,19 +61,23 @@ class _HomeState extends State<Home> {
         _userRole = roleData['role'];
       });
 
+      // Cargar datos
       if (_isSupervisor) {
         final cases = await _casesController.getAllCasesForSupervisor();
         setState(() {
           _allCasesWithUsers = cases;
         });
       } else if (_currentUser != null) {
-        final userCases = await _casesController.getUserCases(_currentUser!.id!);
+        // Usar el ID
+        final userCases = await _casesController.getUserCases(
+          _currentUser!['id'],
+        );
         setState(() {
           _userCases = userCases;
         });
       }
     } catch (e) {
-      print('Error inicializando datos del home: $e');
+      throw ('Error inicializando datos del home: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -85,12 +89,12 @@ class _HomeState extends State<Home> {
 
   Future<void> _handleLogout() async {
     try {
-      await _roleController.signOut(); // Usar el controlador para cerrar sesión
+      await _roleController.signOut();
       if (mounted) {
         context.pushReplacement('/login');
       }
     } catch (e) {
-      print('Error al cerrar sesión: $e');
+      throw ('Error al cerrar sesión: $e');
     }
   }
 
@@ -104,7 +108,6 @@ class _HomeState extends State<Home> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            // Avatar y nombre del usuario
             CircleAvatar(
               radius: 18,
               backgroundColor: Colors.white.withOpacity(0.2),
@@ -132,7 +135,7 @@ class _HomeState extends State<Home> {
           ],
         ),
         actions: [
-          // Botón Administrar Usuarios (solo para admins)
+          // Administrar Usuarios
           if (_isAdmin) ...[
             IconButton(
               icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
@@ -140,7 +143,7 @@ class _HomeState extends State<Home> {
               tooltip: 'Administrar Usuarios',
             ),
           ],
-          // Botón Cerrar Sesión
+          // Cerrar Sesión
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: _handleLogout,
@@ -152,8 +155,8 @@ class _HomeState extends State<Home> {
       body: _isLoading
           ? const LoadingWidget()
           : _isSupervisor
-              ? _buildSupervisorDashboard()
-              : _buildUserProjects(),
+          ? _buildSupervisorDashboard()
+          : _buildUserProjects(),
     );
   }
 
@@ -199,15 +202,13 @@ class _HomeState extends State<Home> {
                 ),
                 const SizedBox(height: 16),
 
-                // Controles de filtro
+                // Filtro
                 if (_userCases.isNotEmpty) ...[
                   _buildFilterControls(isForUserView: true),
                   const SizedBox(height: 16),
                 ],
 
-                Expanded(
-                  child: _buildProjectsList(isForUserView: true),
-                ),
+                Expanded(child: _buildProjectsList(isForUserView: true)),
               ],
             ),
           ),
@@ -219,19 +220,24 @@ class _HomeState extends State<Home> {
   Widget _buildSupervisorDashboard() {
     return Column(
       children: [
-        // Panel de estadísticas (solo para supervisores)
+        // Panel de estadísticas
         if (_isSupervisor)
           StatisticsPanel(
             totalCases: _allCasesWithUsers.length,
-            pendingCases: _allCasesWithUsers.where((c) => c['approved'] == null).length,
-            approvedCases: _allCasesWithUsers.where((c) => c['approved'] == true).length,
-            rejectedCases: _allCasesWithUsers.where((c) => c['approved'] == false).length,
+            pendingCases: _allCasesWithUsers
+                .where((c) => c['approved'] == null)
+                .length,
+            approvedCases: _allCasesWithUsers
+                .where((c) => c['approved'] == true)
+                .length,
+            rejectedCases: _allCasesWithUsers
+                .where((c) => c['approved'] == false)
+                .length,
           ),
 
-        // Controles de filtro y búsqueda
+        // Filtro y búsqueda
         _buildFilterControls(),
 
-        // Lista de casos
         Expanded(child: _buildProjectsList()),
       ],
     );
@@ -265,7 +271,7 @@ class _HomeState extends State<Home> {
 
   List<Map<String, dynamic>> get _filteredCases {
     var filtered = _allCasesWithUsers.where((caseData) {
-      // Filtro por búsqueda
+      // Filtro por busqueda
       if (_searchQuery.isNotEmpty) {
         final caseName = caseData['name']?.toString().toLowerCase() ?? '';
         final userInfo = caseData['user_id'] as Map<String, dynamic>;
@@ -279,7 +285,7 @@ class _HomeState extends State<Home> {
         }
       }
 
-      // Filtro por estado usando el campo approved
+      // Filtro por estado
       if (_filterStatus != 'all') {
         final approved = caseData['approved'];
         switch (_filterStatus) {
@@ -295,7 +301,7 @@ class _HomeState extends State<Home> {
       return true;
     }).toList();
 
-    // Ordenar por fecha de creación (más recientes primero)
+    // Ordenar por fecha de creación
     filtered.sort((a, b) {
       final dateA =
           DateTime.tryParse(a['created_at']?.toString() ?? '') ??
@@ -311,7 +317,7 @@ class _HomeState extends State<Home> {
 
   List<CaseModel> get _filteredUserCases {
     var filtered = _userCases.where((caseModel) {
-      // Filtro por búsqueda en nombre del proyecto
+      // Filtro por busqueda por nombre
       if (_userSearchQuery.isNotEmpty) {
         final caseName = caseModel.name.toLowerCase();
         if (!caseName.contains(_userSearchQuery.toLowerCase())) {
@@ -319,7 +325,7 @@ class _HomeState extends State<Home> {
         }
       }
 
-      // Filtro por estado usando el campo approved
+      // Filtro por estado
       if (_userFilterStatus != 'all') {
         final approved = caseModel.approved;
         switch (_userFilterStatus) {
@@ -335,7 +341,7 @@ class _HomeState extends State<Home> {
       return true;
     }).toList();
 
-    // Ordenar por fecha de creación (más recientes primero)
+    // Ordenar por fecha de creación
     filtered.sort((a, b) {
       final dateA = a.createdAt ?? DateTime.now();
       final dateB = b.createdAt ?? DateTime.now();
@@ -377,10 +383,10 @@ class _HomeState extends State<Home> {
               hasSearchQuery || hasFilterStatus
                   ? 'No se encontraron proyectos con los filtros aplicados'
                   : isForUserView
-                      ? (_userCases.isEmpty
-                          ? 'No tienes proyectos asignados'
-                          : 'No se encontraron proyectos')
-                      : 'No hay proyectos disponibles',
+                  ? (_userCases.isEmpty
+                        ? 'No tienes proyectos asignados'
+                        : 'No se encontraron proyectos')
+                  : 'No hay proyectos disponibles',
               style: const TextStyle(
                 fontSize: 18,
                 color: Colors.grey,
@@ -408,10 +414,7 @@ class _HomeState extends State<Home> {
               const SizedBox(height: 8),
               const Text(
                 'Los proyectos asignados a ti aparecerán aquí',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
             ],
           ],
@@ -441,18 +444,25 @@ class _HomeState extends State<Home> {
           final caseData = items[index] as Map<String, dynamic>;
           return UnifiedProjectCard(
             projectName: caseData['name']?.toString() ?? 'Proyecto sin nombre',
-            userEmail: (caseData['user_id'] as Map<String, dynamic>)['email']?.toString(),
-            createdAt: DateTime.tryParse(caseData['created_at']?.toString() ?? '') ?? DateTime.now(),
+            userEmail: (caseData['user_id'] as Map<String, dynamic>)['email']
+                ?.toString(),
+            createdAt:
+                DateTime.tryParse(caseData['created_at']?.toString() ?? '') ??
+                DateTime.now(),
             approved: caseData['approved'],
             onTap: () {
-              final caseName = caseData['name']?.toString() ?? 'Proyecto sin nombre';
+              final caseName =
+                  caseData['name']?.toString() ?? 'Proyecto sin nombre';
               final serenityId = caseData['serenity_id']?.toString();
               final caseId = caseData['id']?.toString();
 
-              String url = '/supervisor-review/${Uri.encodeComponent(caseName)}';
+              String url =
+                  '/supervisor-review/${Uri.encodeComponent(caseName)}';
               List<String> queryParams = [];
               if (serenityId != null) {
-                queryParams.add('serenityId=${Uri.encodeComponent(serenityId)}');
+                queryParams.add(
+                  'serenityId=${Uri.encodeComponent(serenityId)}',
+                );
               }
               if (caseId != null) {
                 queryParams.add('caseId=${Uri.encodeComponent(caseId)}');

@@ -16,12 +16,7 @@ class RoleController {
         'role': role ?? '',
       };
     } catch (e) {
-      print('Error obteniendo rol del usuario: $e');
-      return {
-        'isAdmin': false,
-        'isSupervisor': false,
-        'role': '',
-      };
+      return {'isAdmin': false, 'isSupervisor': false, 'role': ''};
     }
   }
 
@@ -29,7 +24,6 @@ class RoleController {
     try {
       await _authService.signOut();
     } catch (e) {
-      print('Error al cerrar sesión: $e');
       rethrow;
     }
   }

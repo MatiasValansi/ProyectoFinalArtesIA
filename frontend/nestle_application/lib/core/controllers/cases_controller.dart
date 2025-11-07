@@ -11,7 +11,6 @@ class CasesController {
       final casesData = await _casesService.getCasesByUser(userId);
       return casesData.map((json) => CaseModel.fromJson(json)).toList();
     } catch (e) {
-      print('Error cargando casos del usuario: $e');
       return [];
     }
   }
@@ -20,7 +19,6 @@ class CasesController {
     try {
       return await _casesService.getAllCasesWithUserInfo();
     } catch (e) {
-      print('Error cargando casos para supervisor: $e');
       return [];
     }
   }
