@@ -2,7 +2,7 @@
 
 ## 📋 Descripción del Proyecto
 
-NestléArtesIA es una aplicación móvil desarrollada en Flutter que permite a los usuarios analizar obras de arte utilizando inteligencia artificial. La aplicación combina la potencia de Firebase para autenticación, Supabase para gestión de datos y la API de Serenity para análisis de imágenes con IA.
+NestléArtesIA es una aplicación desarrollada en Flutter que permite a los usuarios acreditados por la compañía analizar piezas de arte utilizando inteligencia artificial parametrizada a medida de sus requerimientos. La aplicación combina la seguridad de Firebase para autenticación, Supabase para gestión de datos y la API de Serenity Star para análisis de imágenes con IA.
 
 ## 🚀 Características Principales
 
@@ -13,8 +13,8 @@ NestléArtesIA es una aplicación móvil desarrollada en Flutter que permite a l
 - **Seguridad**: Validación de permisos y acceso basado en roles
 
 ### 🎨 Análisis de Arte con IA
-- **Carga de Imágenes**: Interfaz drag & drop para subir obras de arte
-- **Análisis Inteligente**: Integración con API Serenity para análisis de imágenes
+- **Carga de Imágenes**: Interfaz para subir piezas de arte
+- **Análisis Inteligente**: Integración con API Serenity Star para análisis de imágenes
 - **Resultados Detallados**: Visualización completa de los análisis realizados
 - **Historial de Proyectos**: Gestión de casos y seguimiento de análisis
 
@@ -26,7 +26,7 @@ NestléArtesIA es una aplicación móvil desarrollada en Flutter que permite a l
 ### 📊 Dashboard y Gestión de Proyectos
 - **Panel de Usuario**: Vista personalizada según el rol del usuario
 - **Gestión de Casos**: Creación, seguimiento y administración de proyectos
-- **Estados de Proyecto**: Control de estados (Activo/Inactivo)
+- **Estados de Proyecto**: Control de estados (Aprobado/Desaprobado/En curso)
 - **Navegación Intuitiva**: Sistema de routing con Go Router
 
 ## 🛠️ Tecnologías Utilizadas
@@ -39,7 +39,7 @@ NestléArtesIA es una aplicación móvil desarrollada en Flutter que permite a l
 ### Backend y Servicios
 - **Firebase Authentication**: Gestión de usuarios y autenticación
 - **Supabase**: Base de datos PostgreSQL en tiempo real
-- **Serenity API**: Servicio de análisis de imágenes con IA
+- **Serenity Star API**: Servicio de análisis de imágenes con IA
 - **Row Level Security (RLS)**: Seguridad a nivel de fila en Supabase
 
 ### Gestión de Estado y Navegación
@@ -51,10 +51,10 @@ NestléArtesIA es una aplicación móvil desarrollada en Flutter que permite a l
 
 ### 🏠 Pantalla Principal (Home)
 - **Vista Personalizada**: Contenido adaptado al rol del usuario
-- **Lista de Proyectos**: Visualización de todos los casos asignados
+- **Lista de Proyectos**: Visualización de todos los casos asignados (según rol)
 - **Acceso Rápido**: Botones para crear nuevos proyectos y administrar usuarios
 - **Información de Usuario**: Avatar, email y rol en la barra superior
-- **Estados Visuales**: Indicadores de estado activo/inactivo de proyectos
+- **Estados Visuales**: Indicadores de estado de proyectos
 
 ### 🔑 Pantalla de Login
 - **Autenticación Segura**: Validación de credenciales con Firebase
@@ -63,16 +63,17 @@ NestléArtesIA es una aplicación móvil desarrollada en Flutter que permite a l
 - **Redirección Automática**: Navegación automática según estado de autenticación
 
 ### 🎨 Nueva Obra de Arte
-- **Carga de Archivos**: Sistema drag & drop para imágenes
+- **Carga de Archivos**: Pantalla de carga de imágenes
 - **Validación de Formatos**: Soporte para múltiples formatos de imagen
-- **Vista Previa**: Visualización de la imagen antes del análisis
-- **Configuración de Proyecto**: Definición de parámetros de análisis
+- **Vista Previa**: Visualización de la/s imagen/es antes y durante del análisis
+- **Configuración de Proyecto**: Definición de parámetros de análisis según lineamientos generales. Adaptables por el administrador del sistema
 
 ### 📈 Resultados de Análisis
 - **Visualización Completa**: Presentación detallada de resultados de IA
-- **Chat Integrado**: Conversación sobre los resultados del análisis
+- **Chat Integrado**: Agente conversacional integrado en los resultados del análisis
 - **Datos Estructurados**: Información organizada y fácil de interpretar
-- **Exportación**: Opciones para compartir y guardar resultados
+- **Historial**: Registro de casos histórico
+- **Supervisión**: Aprobación o rechazo del proyecto supeditada a los usuarios Supervisores
 
 ### 👥 Administración de Usuarios (Solo Administradores)
 - **Gestión Completa**: Crear, editar y eliminar usuarios
@@ -104,7 +105,7 @@ lib/
 
 ### 🔄 Flujo de Datos
 1. **Autenticación**: Firebase maneja login/logout
-2. **Datos de Usuario**: Supabase almacena información extendida
+2. **Datos de Usuario**: Supabase almacena los datos de la APP
 3. **Análisis IA**: Serenity API procesa imágenes
 4. **Estado Local**: StatefulWidgets gestionan UI reactiva
 
@@ -125,7 +126,6 @@ lib/
 - Todas las funcionalidades de Supervisor
 - Gestión completa de usuarios (crear, editar, eliminar)
 - Asignación y modificación de roles
-- Acceso a configuraciones del sistema
 
 ## 🚀 Instalación y Configuración
 
@@ -218,7 +218,6 @@ flutter test
 
 ### Analytics
 - Firebase Analytics para tracking de uso
-- Métricas de performance de la aplicación
 - Seguimiento de errores con Firebase Crashlytics
 
 ### Logging
@@ -237,16 +236,9 @@ flutter test
 - ✅ Sistema de chat más robusto
 - ✅ Corrección de errores de navegación
 
-### Próximas Actualizaciones
-- 🔄 Sistema de notificaciones push
-- 🔄 Modo offline con sincronización
-- 🔄 Análisis por lotes de múltiples imágenes
-- 🔄 Exportación de reportes en PDF
-- 🔄 Modo oscuro para la interfaz
-
 ## 🤝 Contribución
 
-### Guías de Contribución
+### Guías de Contribución de desarrollo interno
 1. Fork del repositorio
 2. Crear una rama para la nueva funcionalidad
 3. Implementar cambios con tests
@@ -263,20 +255,6 @@ flutter test
 - Reportar bugs en GitHub Issues
 - Incluir logs y pasos para reproducir
 - Especificar versión de Flutter y dispositivo
-
-
 ---
 
-## 🌟 Agradecimientos
-
-Agradecemos a todos los colaboradores y a las siguientes tecnologías que hicieron posible este proyecto:
-
-- **Flutter Team** por el excelente framework
-- **Firebase** por los servicios backend
-- **Supabase** por la base de datos en tiempo real
-- **Serenity AI** por la API de análisis de imágenes
-- **ORT Universidad** por el apoyo académico
-
----
-
-*Desarrollado con ❤️ para el análisis de arte con IA*
+*Desarrollado con ❤️😁 del equipo de Trabajo Final para Nestlé*
