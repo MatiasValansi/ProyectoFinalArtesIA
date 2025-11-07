@@ -12,14 +12,14 @@ class ChatComponent extends StatefulWidget {
   final String projectName;
   final Map<String, dynamic>? analysisData;
   final String? caseSerenityId;
-  final VoidCallback? onAnalysisUpdated; // Callback para notificar cambios
+  final VoidCallback? onAnalysisUpdated;
 
   const ChatComponent({
     super.key,
     required this.projectName,
     this.analysisData,
     this.caseSerenityId,
-    this.onAnalysisUpdated, // Añadir el callback
+    this.onAnalysisUpdated,
   });
 
   @override
