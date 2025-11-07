@@ -1,15 +1,16 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-//Configuración de la base de datos Supabase
 class SupabaseConfig {
-  static Future<void> initialize() async {
+  static Future<void> initialize({
+    required String url,
+    required String anonKey,
+  }) async {
     await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL']!,
-      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+      url: url.isNotEmpty ? url : dotenv.env['SUPABASE_URL']!,
+      anonKey: anonKey.isNotEmpty ? anonKey : dotenv.env['SUPABASE_ANON_KEY']!,
     );
   }
-
 
   static SupabaseClient get client => Supabase.instance.client;
 }
