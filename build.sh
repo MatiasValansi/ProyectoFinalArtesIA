@@ -17,9 +17,27 @@ cd $RENDER_PROJECT_ROOT
 echo "📁 Estructura del proyecto:"
 ls -la
 
+# Verificar si estamos en src
+echo "🔍 Verificando si estamos en src..."
+if [ -d "src" ]; then
+  echo "✅ Detectado directorio src, navegando..."
+  cd src
+  echo "📂 Ahora en:"
+  pwd
+  ls -la
+fi
+
 # Navegar al directorio de Flutter
 echo "🔍 Navegando a frontend/nestle_application..."
-cd frontend/nestle_application
+if [ -d "frontend/nestle_application" ]; then
+  cd frontend/nestle_application
+  echo "✅ Encontrado directorio Flutter"
+else
+  echo "❌ No se encuentra frontend/nestle_application"
+  echo "📋 Estructura actual:"
+  find . -name "pubspec.yaml" -type f 2>/dev/null
+  exit 1
+fi
 
 # Verificar que estamos en el directorio correcto
 echo "📂 Directorio actual:"
