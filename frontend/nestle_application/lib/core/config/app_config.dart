@@ -4,11 +4,18 @@ class AppConfig {
   // Usar dart-define en producción, fallback a dotenv en desarrollo
   static String _getEnvVar(String key, String defaultValue) {
     // Intentar obtener de dart-define primero (producción)
-    String? dartDefineValue = String.fromEnvironment(key).isEmpty 
-        ? null 
-        : String.fromEnvironment(key);
+    String dartDefineValue = String.fromEnvironment(key);
+    if (dartDefineValue.isNotEmpty) {
+      return dartDefineValue;
+    }
     
-    return dartDefineValue ?? dotenv.env[key] ?? defaultValue;
+    // Fallback a dotenv (desarrollo)
+    String? dotenvValue = dotenv.env[key];
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+    
+    return defaultValue;
   }
 
   static String get fileUploadEndpoint =>

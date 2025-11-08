@@ -7,12 +7,15 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Intentar cargar .env solo en desarrollo
   try {
     await dotenv.load(fileName: "../../.env");
+    print('Archivo .env cargado exitosamente (desarrollo)');
   } catch (e) {
     // En producción (web), es normal que no exista el archivo .env
     // Las variables de entorno se pasan en tiempo de compilación
-    print('Archivo .env no encontrado - usando variables de entorno de sistema: $e');
+    print('Modo producción - usando variables de dart-define');
   }
 
   // Inicializar Firebase
