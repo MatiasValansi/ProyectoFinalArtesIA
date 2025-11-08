@@ -10,7 +10,9 @@ void main() async {
   try {
     await dotenv.load(fileName: "../../.env");
   } catch (e) {
-    throw Exception('No se pudo cargar el archivo .env: $e');
+    // En producción (web), es normal que no exista el archivo .env
+    // Las variables de entorno se pasan en tiempo de compilación
+    print('Archivo .env no encontrado - usando variables de entorno de sistema: $e');
   }
 
   // Inicializar Firebase

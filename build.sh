@@ -51,7 +51,13 @@ flutter pub get
 
 # Build para web
 echo "🌐 Building para web..."
-flutter build web --release
+flutter build web --release \
+  --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+  --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+  --dart-define=IA_API_BASE_URL="$IA_API_BASE_URL" \
+  --dart-define=IA_API_KEY="$IA_API_KEY" \
+  --dart-define=IA_NESTLE_CHECK_AGENT_ENDPOINT="$IA_NESTLE_CHECK_AGENT_ENDPOINT" \
+  --dart-define=IA_VOLATILE_KNOWLEDGE_ENDPOINT="$IA_VOLATILE_KNOWLEDGE_ENDPOINT"
 
 # Verificar que el build se completó
 echo "� Verificando build..."
