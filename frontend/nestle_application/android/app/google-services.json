@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "241241482881",
+    "project_id": "analisis-de-artes",
+    "storage_bucket": "analisis-de-artes.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:241241482881:android:0cf8383e5274d15069cf80",
+        "android_client_info": {
+          "package_name": "com.example.nestle_application"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0W9pOYvicGn7e4fv6sg-zvyQ-JDjb0sc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
