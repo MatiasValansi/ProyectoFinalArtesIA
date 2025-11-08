@@ -23,15 +23,19 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    print('✅ Firebase inicializado correctamente');
   } catch (e) {
-    throw Exception('No se pudo inicializar Firebase: $e');
+    print('❌ Error inicializando Firebase: $e');
+    // No lanzar excepción, continuar con la app
   }
 
   // Inicializar Supabase
   try {
     await SupabaseConfig.initialize();
+    print('✅ Supabase inicializado correctamente');
   } catch (e) {
-    throw Exception('No se pudo inicializar Supabase: $e');
+    print('❌ Error inicializando Supabase: $e');
+    // No lanzar excepción, continuar con la app
   }
 
   runApp(const MainApp());
