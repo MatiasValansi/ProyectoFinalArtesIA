@@ -4,18 +4,21 @@ import 'package:nestle_application/core/router/app_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'database/supabase_config.dart';
 import 'firebase_options.dart';
+import 'package:flutter/foundation.dart'; // 👈 Importante para kIsWeb
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Intentar cargar .env solo en desarrollo
-  try {
-    await dotenv.load(fileName: "../../.env");
-    print('Archivo .env cargado exitosamente (desarrollo)');
-  } catch (e) {
-    // En producción (web), es normal que no exista el archivo .env
-    // Las variables de entorno se pasan en tiempo de compilación
-    print('Modo producción - usando variables de dart-define');
+
+  // Solo cargar .env en desarrollo local (no web)
+  if (!kIsWeb) {
+    try {
+      await dotenv.load(fileName: "../../.env");
+      print('✅ Archivo .env cargado exitosamente (modo desarrollo)');
+    } catch (e) {
+      print('⚠️ No se pudo cargar .env, continuando con dart-define');
+    }
+  } else {
+    print('🌐 Modo web: usando variables --dart-define');
   }
 
   // Inicializar Firebase
@@ -26,7 +29,6 @@ void main() async {
     print('✅ Firebase inicializado correctamente');
   } catch (e) {
     print('❌ Error inicializando Firebase: $e');
-    // No lanzar excepción, continuar con la app
   }
 
   // Inicializar Supabase
@@ -35,7 +37,6 @@ void main() async {
     print('✅ Supabase inicializado correctamente');
   } catch (e) {
     print('❌ Error inicializando Supabase: $e');
-    // No lanzar excepción, continuar con la app
   }
 
   runApp(const MainApp());
