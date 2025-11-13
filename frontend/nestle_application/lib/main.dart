@@ -11,11 +11,9 @@ void main() async {
   // Intentar cargar .env solo en desarrollo
   try {
     await dotenv.load(fileName: "../../.env");
-    print('Archivo .env cargado exitosamente (desarrollo)');
   } catch (e) {
     // En producción (web), es normal que no exista el archivo .env
     // Las variables de entorno se pasan en tiempo de compilación
-    print('Modo producción - usando variables de dart-define');
   }
 
   // Inicializar Firebase
@@ -23,18 +21,14 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('✅ Firebase inicializado correctamente');
   } catch (e) {
-    print('❌ Error inicializando Firebase: $e');
     // No lanzar excepción, continuar con la app
   }
 
   // Inicializar Supabase
   try {
     await SupabaseConfig.initialize();
-    print('✅ Supabase inicializado correctamente');
   } catch (e) {
-    print('❌ Error inicializando Supabase: $e');
     // No lanzar excepción, continuar con la app
   }
 

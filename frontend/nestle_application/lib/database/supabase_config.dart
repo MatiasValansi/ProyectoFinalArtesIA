@@ -13,11 +13,7 @@ class SupabaseConfig {
         ? const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '')
         : dotenv.env['SUPABASE_ANON_KEY'] ?? '';
 
-    print('🔍 Supabase URL: ${supabaseUrl.isNotEmpty ? "✅ Configurada" : "❌ Vacía"}');
-    print('🔍 Supabase Key: ${supabaseKey.isNotEmpty ? "✅ Configurada" : "❌ Vacía"}');
-
     if (supabaseUrl.isEmpty || supabaseKey.isEmpty) {
-      print('⚠️ Variables de Supabase no configuradas, continuando sin Supabase');
       return;
     }
 

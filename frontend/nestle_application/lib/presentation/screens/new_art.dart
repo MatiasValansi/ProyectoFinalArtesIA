@@ -52,6 +52,8 @@ class _NewArtState extends State<NewArt> {
   List<html.File> _selectedFiles = [];
   bool _isDragOver = false;
   bool _isUploading = false;
+  bool _isImageProcessing = false;
+  String? _volatileKnowledgeId;
 
   @override
   void dispose() {
@@ -68,18 +70,88 @@ class _NewArtState extends State<NewArt> {
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
       if (files != null && files.isNotEmpty) {
+        final file = files[0];
+        
+        // Verificar el tamaño del archivo (1MB = 1 * 1024 * 1024 bytes)
+        const maxSize = 1 * 1024 * 1024; // 1MB
+        if (file.size > maxSize) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'La imagen es muy grande (${_formatFileSize(file.size)}). El límite es de 1MB.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        
         setState(() {
-          _selectedFiles = [files[0]];
+          _selectedFiles = [file];
+          // Resetear estados cuando se selecciona una nueva imagen
+          _isImageProcessing = false;
+          _volatileKnowledgeId = null;
         });
+        // Procesar la imagen automáticamente cuando se selecciona
+        _processImage();
       }
     });
 
     uploadInput.click();
   }
 
+  Future<void> _processImage() async {
+    if (_selectedFiles.isEmpty) return;
+
+    setState(() {
+      _isImageProcessing = true;
+    });
+
+    try {
+      final file = _selectedFiles.first;
+      
+      // Subir imagen para análisis IA
+      final volatileKnowledgeId = await _serenityApiService.uploadImage(file);
+      
+      // Esperar hasta que la imagen esté completamente procesada
+      await _serenityApiService.waitForVolatileKnowledgeReady(volatileKnowledgeId);
+      
+      setState(() {
+        _volatileKnowledgeId = volatileKnowledgeId;
+        _isImageProcessing = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Imagen procesada y lista para análisis'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isImageProcessing = false;
+        _volatileKnowledgeId = null;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al procesar imagen: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _removeFile(int index) {
     setState(() {
       _selectedFiles.removeAt(index);
+      // Resetear estados cuando se elimina la imagen
+      _isImageProcessing = false;
+      _volatileKnowledgeId = null;
     });
   }
 
@@ -94,10 +166,10 @@ class _NewArtState extends State<NewArt> {
       return;
     }
 
-    if (_selectedFiles.isEmpty) {
+    if (_volatileKnowledgeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor selecciona un archivo'),
+          content: Text('Por favor espera a que la imagen se procese'),
           backgroundColor: Colors.red,
         ),
       );
@@ -131,13 +203,10 @@ class _NewArtState extends State<NewArt> {
         // Inicializar chat
         final chatId = await _serenityApiService.initializeChat();
 
-        // Subir imagen para a la IA
-        final volatileKnowledgeId = await _serenityApiService.uploadImage(file);
-
-        // Una vez que el volatile knowledge esté listo, ejecutar el análisis
+        // Ejecutar el análisis con la imagen ya procesada
         final analysisResponse = await _serenityApiService.executeAnalysis(
           chatId,
-          volatileKnowledgeId,
+          _volatileKnowledgeId!,
         );
 
         // Crear el caso en Supabase
@@ -146,7 +215,7 @@ class _NewArtState extends State<NewArt> {
             name: _productNameController.text.trim(),
             serenityId: analysisResponse.instanceId,
             userId: userId,
-            arteId: [volatileKnowledgeId],
+            arteId: [_volatileKnowledgeId!],
             imageUrls: [supabaseImageUrl],
           ),
         );
@@ -393,6 +462,15 @@ class _NewArtState extends State<NewArt> {
               'Arte (JPG, PNG o PDF)',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
+            const SizedBox(height: 4),
+            Text(
+              'Tamaño máximo: 1MB',
+              style: TextStyle(
+                fontSize: 12, 
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
             const SizedBox(height: 8),
 
             // Área de drag & drop
@@ -422,7 +500,9 @@ class _NewArtState extends State<NewArt> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _isUploading ? null : _submitForAnalysis,
+                    onPressed: (_isUploading || _isImageProcessing || _volatileKnowledgeId == null) 
+                        ? null 
+                        : _submitForAnalysis,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF004B93),
                       foregroundColor: Colors.white,
@@ -442,10 +522,33 @@ class _NewArtState extends State<NewArt> {
                               ),
                             ),
                           )
-                        : const Text(
-                            'Enviar a análisis',
-                            style: TextStyle(fontSize: 16),
-                          ),
+                        : _isImageProcessing
+                            ? const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Procesando imagen...',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                _volatileKnowledgeId == null 
+                                    ? 'Selecciona una imagen primero'
+                                    : 'Enviar a análisis',
+                                style: const TextStyle(fontSize: 16),
+                              ),
                   ),
                 ),
               ],
@@ -619,6 +722,57 @@ class _NewArtState extends State<NewArt> {
                       ],
                     ),
                   ),
+                  // Estado de procesamiento
+                  if (_isImageProcessing || _volatileKnowledgeId != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      decoration: BoxDecoration(
+                        color: _isImageProcessing 
+                            ? Colors.orange.withOpacity(0.1)
+                            : Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _isImageProcessing 
+                              ? Colors.orange
+                              : Colors.green,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isImageProcessing)
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                              ),
+                            )
+                          else
+                            const Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                              size: 16,
+                            ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isImageProcessing 
+                                ? 'Procesando'
+                                : 'Imagen lista',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _isImageProcessing 
+                                  ? Colors.orange[800]
+                                  : Colors.green[800],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

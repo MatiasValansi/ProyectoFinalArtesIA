@@ -586,7 +586,24 @@ class _ChatComponentState extends State<ChatComponent> {
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
       if (files != null && files.isNotEmpty) {
-        _selectedImage = files[0];
+        final file = files[0];
+        
+        // Verificar el tamaño del archivo (1MB = 1 * 1024 * 1024 bytes)
+        const maxSize = 1 * 1024 * 1024; // 1MB
+        if (file.size > maxSize) {
+          _safeSetState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'La imagen es muy grande (${_formatFileSize(file.size)}). El límite es de 1MB.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        
+        _selectedImage = file;
         _uploadFile();
       }
     });
@@ -645,8 +662,15 @@ class _ChatComponentState extends State<ChatComponent> {
 
       _volatileKnowledgeId = await serenityService.uploadImage(_selectedImage!);
 
-      // Guardar inmediatamente ID en la base de datos
+      // Esperar hasta que la imagen esté procesada
       if (_volatileKnowledgeId != null) {
+        _safeSetState(() {
+          _imageStatus = 'Procesando imagen para IA...';
+        });
+        
+        await serenityService.waitForVolatileKnowledgeReady(_volatileKnowledgeId!);
+        
+        // Guardar ID en la base de datos una vez procesada
         await _addImageToDatabase(_volatileKnowledgeId!, supabaseImageUrl);
       }
 
@@ -1063,5 +1087,11 @@ class _ChatComponentState extends State<ChatComponent> {
         );
       }
     });
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }

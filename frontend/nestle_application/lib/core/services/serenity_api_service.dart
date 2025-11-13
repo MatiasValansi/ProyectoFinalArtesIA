@@ -113,6 +113,54 @@ class SerenityApiService {
     throw Exception('Error inesperado al subir imagen');
   }
 
+  /// Verificar el estado del volatile knowledge
+  Future<Map<String, dynamic>> getVolatileKnowledgeStatus(String volatileKnowledgeId) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.iaApiBaseUrl}/api/v2/VolatileKnowledge/$volatileKnowledgeId'),
+      headers: {
+        'X-API-KEY': AppConfig.iaApiKey,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al verificar estado del volatile knowledge: ${response.statusCode}');
+    }
+  }
+
+  /// Esperar hasta que el volatile knowledge esté listo
+  Future<void> waitForVolatileKnowledgeReady(String volatileKnowledgeId) async {
+    const delayBetweenAttempts = Duration(seconds: 10);
+
+    while (true) {
+      try {
+        final status = await getVolatileKnowledgeStatus(volatileKnowledgeId);
+        
+        // Verificar si el estado es "success"
+        if (status['status'] == 'success') {
+          return; // El volatile knowledge está listo
+        }
+        
+        // Si hay un error en el procesamiento, lanzar excepción
+        if (status['status'] == 'failed' || status['status'] == 'error') {
+          throw Exception('Error al procesar la imagen: ${status['status']}');
+        }
+        
+        // Si está en progreso, esperar y continuar
+        await Future.delayed(delayBetweenAttempts);
+      } catch (e) {
+        // Si es un error de estado (failed/error), relanzar
+        if (e.toString().contains('Error al procesar la imagen')) {
+          rethrow;
+        }
+        // Para otros errores, esperar y continuar
+        await Future.delayed(delayBetweenAttempts);
+      }
+    }
+  }
+
   /// Ejecutar análisis
   Future<AnalysisResponse> executeAnalysis(String chatId, String fileId) async {
     int maxRetries = 3;
